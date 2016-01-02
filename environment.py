@@ -13,10 +13,9 @@ __email__            = "dilawars@ncbs.res.in"
 __status__           = "Development"
 
 class Args(): pass
-
 args_ = Args()
+
 shape_ = None
-args_ = {}
 images_ = {}
 save_direc_ = None
 cells_ = []

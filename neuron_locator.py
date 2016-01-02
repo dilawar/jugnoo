@@ -23,13 +23,16 @@ import cv2
 import helper
 from image_analysis import edge_detector 
 from image_analysis import contour_detector 
+import environment as e
 import cell
+import image_reader
 
 import logging
 logger = logging.getLogger('')
 
 def init( ):
-    e.save_direc_ = os.path.join( '.', '_results_%s' % os.path.split(e.args_.file)[1])
+    e.save_direc_ = os.path.join( '.', '_results_%s' %
+            os.path.split(e.args_.input)[1])
     if os.path.isdir( e.save_direc_ ):
         return
         for f in glob.glob( '%s/*' % e.save_direc_ ):
@@ -264,8 +267,6 @@ def merge_or_reject_cells( cells ):
     return cells
 
 def get_roi_containing_minimum_cells( ):
-    global e.images_
-
     neuronImg = np.zeros( shape = e.shape_ )
     coolcells = []
     for cell in cells_:
@@ -289,7 +290,7 @@ def get_roi_containing_minimum_cells( ):
 
 def process_input( inputfile, bbox = None ):
     logger.info("Processing %s" % inputfile)
-    frames = read_frames( inputfile )
+    frames = image_reader.read_frames( inputfile )
     
     # get the summary of all activity
     summary = np.zeros( shape = frames[0].shape )
@@ -332,7 +333,7 @@ def plot_results( ):
 
     stamp = datetime.datetime.now().isoformat()
 
-    txt = "%s" % e.args_.file.split('/')[-1]
+    txt = "%s" % e.args_input.split('/')[-1]
     txt += ' @ %s' % stamp
     txt += ', 1 px = %s micro-meter' % e.args_.pixal_size
     plt.suptitle(txt
@@ -356,8 +357,8 @@ def get_bounding_box( ):
     else: c2 = c1 + w
     return (r1, c1, r2, c2)
 
-def main( inputfile, **kwargs ):
-    init( **kwargs )
+def main( ):
+    init( )
     bbox = get_bounding_box( )
     logger.info("== Bounding box: %s" % str(bbox))
     process_input( e.args_.input, bbox = bbox )
@@ -392,7 +393,6 @@ if __name__ == '__main__':
         , type = float
         , help = 'Pixal size in micro meter'
         )
-    class Args(): pass
     parser.parse_args( namespace = e.args_ )
-    e.args_.outfile = args.outfile or ('%s_out.png' % args.file)
-    main( e.args_.input, **vars(e.args_) )
+    e.args_.output = e.args_.output or ('%s_out.png' % e.args_.input)
+    main( )
