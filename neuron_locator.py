@@ -392,6 +392,8 @@ def plot_results( ):
             )
     plt.tight_layout( 1.5 )
     logger.info('Saved results to %s' % config.args_.outfile)
+    if config.args_.debug:
+        plt.show( )
     plt.savefig( config.args_.outfile )
 
 def get_bounding_box( ):
