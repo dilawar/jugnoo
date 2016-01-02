@@ -17,7 +17,9 @@ import pylab
 
 def plot_images( images_dict, outfile = None ):
     assert type( images_dict ) == dict, "Requires dict of images"
-    fig, axes = pylab.subplots( len(images_dict), 1, sharex = True )
+    fig, axes = pylab.subplots( len(images_dict), 1
+            , sharex = True, sharey = True 
+            )
     for i, k in enumerate( images_dict ):
         axes[i].imshow( images_dict[k] )
         axes[i].set_title( k )
@@ -25,4 +27,5 @@ def plot_images( images_dict, outfile = None ):
         pylab.show( )
     else:
         print('[INFO] Saving image to %s' % outfile )
+        pylab.tight_layout()
         pylab.savefig( outfile )
