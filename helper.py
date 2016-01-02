@@ -21,7 +21,7 @@ def plot_images( images_dict, outfile = None ):
             , sharex = True, sharey = True 
             )
     for i, k in enumerate( images_dict ):
-        axes[i].imshow( images_dict[k] )
+        axes[i].imshow( images_dict[k], aspect = 'auto' )
         axes[i].set_title( k )
     if not outfile:
         pylab.show( )

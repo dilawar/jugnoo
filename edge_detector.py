@@ -41,13 +41,14 @@ def all_edges( img, **kwargs ):
 
 def detect_edges( filename, **kwargs ):
     debug__('[INFO] Detecting edges in %s' % filename)
+    orignal = cv2.imread( filename )
     img = cv2.imread(filename, 0)
     edges = all_edges(img, **kwargs )
-    if kwargs['debug'] > 0:
-        outfile = kwargs.get('outfile', None) or '%s_edges.png' % filename
-        helper.plot_images( { 'original' : img, 'edges' : edges } 
-                , outfile = kwargs.get('output', None)
-                )
+    outfile = kwargs.get('outfile', '%s_edges.png' % filename)
+    debug__('Wrote edges to %s' % outfile )
+    helper.plot_images( { 'original' : orignal, 'edges' : edges }
+            , outfile = outfile
+            )
     return edges
 
 if __name__ == '__main__':
