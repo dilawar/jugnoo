@@ -3,4 +3,4 @@
 These sets of scripts process calcium imaging data (tiff format) to locate the
 possible interesting regions which might be firing neurons. 
 
-See the [[wiki]] page for demo and details.
+See the [wiki](https://github.com/dilawar/neuron_locator/wiki) page for demo and more details.
