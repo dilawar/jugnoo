@@ -119,13 +119,14 @@ def threshold_frame( frame, nstd = None):
 
 def save_image( filename, img, **kwargs):
     """Store a given image to filename """
-    global save_direc_ 
-    global images_
-    img = to_grayscale( img )
-    outfile = os.path.join( save_direc_, filename )
-    logging.info( 'Saving image to %s ' % outfile )
-    cv2.imwrite( outfile , img )
-    return img
+    if config.args_.debug:
+        global save_direc_ 
+        global images_
+        img = to_grayscale( img )
+        outfile = os.path.join( save_direc_, filename )
+        logging.info( 'Saving image to %s ' % outfile )
+        cv2.imwrite( outfile , img )
+        return img
 
 def write_ellipses( ellipses ):
     global save_direc_
@@ -160,21 +161,21 @@ def get_rois( frames, window):
             sumAll += e
         edges = get_edges( sumAll )
 
-        # merge_image = np.concatenate( (to_grayscale(sumAll), edges), axis=0)
-        # save_image( 'edges_%s.png' % i, merge_image)
+        merge_image = np.concatenate( (to_grayscale(sumAll), edges), axis=0)
+        save_image( 'edges_%s.png' % i, merge_image)
 
         #  Also creates a list of acceptable cells in each frame.
         cellImg = compute_cells( edges )
 
-        ## save_image( 'cell_%s.png' % i, cellImg )
+        save_image( 'cell_%s.png' % i, cellImg )
         roi += cellImg
         allEdges += edges 
 
     images_['all_edges'] = allEdges
     images_['rois'] = to_grayscale(roi)
 
-    # save_image( 'all_edges.png', allEdges, title = 'All edges')
-    # save_image( 'rois.png', roi )
+    save_image( 'all_edges.png', allEdges, title = 'All edges')
+    save_image( 'rois.png', roi )
 
     #  Use this to locate the clusters of cell in all frames. 
     cnts, cntImgs = find_contours( to_grayscale(roi), draw = True, fill = True)
@@ -273,9 +274,9 @@ def df_by_f_data( rois, frames ):
     outfile = '%s/df_by_f.dat' % save_direc_
     comment = 'Each column represents a ROI'
     comment += "\ni'th row is the values of ROIs in image senquence i"
-    # np.savetxt(outfile, dfmat.T, delimiter=',', header = comment)
-    # save_image( 'df_by_f.png', dfmat)
-    # logger.info('Wrote df/f data to %s' % outfile)
+    np.savetxt(outfile, dfmat.T, delimiter=',', header = comment)
+    save_image( 'df_by_f.png', dfmat)
+    logger.info('Wrote df/f data to %s' % outfile)
     return dfmat
 
 def merge_or_reject_cells( cells ):
@@ -435,6 +436,12 @@ if __name__ == '__main__':
         , required = True
         , type = float
         , help = 'Pixal size in micro meter'
+        )
+    parser.add_argument('--debug', '-d'
+        , required = False
+        , default = False
+        , action = 'store_true'
+        , help = 'Run in debug mode'
         )
 
     parser.parse_args(namespace=config.args_)
