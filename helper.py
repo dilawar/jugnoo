@@ -25,4 +25,4 @@ def plot_images( images_dict, outfile = None ):
         pylab.show( )
     else:
         print('[INFO] Saving image to %s' % outfile )
-        pylab.save( outfile )
+        pylab.savefig( outfile )

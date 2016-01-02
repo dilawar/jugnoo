@@ -21,23 +21,34 @@ import pylab
 import helper 
 
 debug_level_ = 0
+
 def debug__( msg, level = 1 ):
     # Print debug message depending on level
     global debug_level_ 
     if type(msg) == list: msg = '\n|- '.join(msg)
-    if level >= debug_level_: print( msg )
+    if level <= debug_level_: print( msg )
 
-def edges( filename, **kwargs ):
+def all_edges( img, **kwargs ):
     global debug_level_
     debug_level_ = kwargs.get( 'debug', 0)
+    mean_, std_ = img.mean(), img.std()
+    high = kwargs.get('threshold_high', min(mean_ + 2 * std_, img.max()) )
+    low = kwargs.get('threshold_low',  max(mean_ , 10) )
+    l2grad = kwargs.get('L2gradient', True)
+    debug__( [ 'Canny edges: low: %s, high = %s' % (low, high) ], 0)
+    edges = cv2.Canny( img, low, high, L2gradient = l2grad )
+    return edges
+
+def detect_edges( filename, **kwargs ):
     debug__('[INFO] Detecting edges in %s' % filename)
     img = cv2.imread(filename, 0)
-    high = kwargs.get('threshold_high', 200)
-    low = kwargs.get('threshold_low', high / 2 )
-    edges = cv2.Canny( img, low, high, L2gradient = True )
+    edges = all_edges(img, **kwargs )
     if kwargs['debug'] > 0:
         outfile = kwargs.get('outfile', None) or '%s_edges.png' % filename
-        helper.plot_images( { 'original' : img, 'edges' : edges } )
+        helper.plot_images( { 'original' : img, 'edges' : edges } 
+                , outfile = kwargs.get('output', None)
+                )
+    return edges
 
 if __name__ == '__main__':
     import argparse
@@ -61,5 +72,5 @@ if __name__ == '__main__':
     class Args: pass 
     args = Args()
     parser.parse_args(namespace=args)
-    edges( args.input,  **vars(args) )
+    detect_edges( args.input, **vars(args) )
 

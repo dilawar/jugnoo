@@ -17,41 +17,41 @@ __status__           = "Development"
 
 import cv2 
 import numpy as np
+import helper
+import edge_detector
 
 def contours( filename, **kwargs ):
     print('[INFO] Detecting contours in %s' % filename)
     img = cv2.imread(filename, 0)
-    high = kwargs.get('threshold_high', img.max() )
-    low = kwargs.get('threshold_low', img.mean() +  img.std() )
-    ret, thres = cv2.threshold( img, low, high, 0)
-    cnts, heir = cv2.findContours(thres, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    if kwargs.get('debug', False):
+    debugLevel = kwargs.get('debug')
+    kwargs.pop('debug')
+    edges = edge_detector.edges( filename, debug = 0, **kwargs )
+    cnts, heir = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    if debugLevel:
         cntImg = np.zeros( img.shape )
-        print cnts
-        cv2.drawContours( cntImg, cnts, -1, 255)
-        cv2.imshow( 'cnt', cntImg )
-        cv2.waitKey( 0 )
-        # img = np.concatenate( (img, cntImg) )
-        outfile = '%s_contours.png' % filename
-        cv2.imwrite( outfile, thres )
-        print('[DEBUG] Wrote edges and original file to %s ' % outfile )
+        cv2.drawContours( cntImg, cnts, -1, 255 )
+        helper.plot_images( { 'original' : img, 'contours' : cntImg } )
 
 if __name__ == '__main__':
     import argparse
     # Argument parser.
-    description = '''description'''
+    description = '''Detect contours in an image'''
     parser = argparse.ArgumentParser(description=description)
-    parser.add_argument('--file', '-f'
+    parser.add_argument('--input', '-i'
         , required = True
-        , help = 'Image file'
+        , help = 'Input file'
         )
-    parser.add_argument('--debug', '-d'
+    parser.add_argument('--output', '-o'
         , required = False
-        , default = True
-        , action = 'store_true'
-        , help = 'Help'
+        , help = 'Output file'
+        )
+    parser.add_argument( '--debug', '-d'
+        , required = False
+        , default = 0
+        , type = int
+        , help = 'Enable debug mode. Default 0, debug level'
         )
     class Args: pass 
     args = Args()
     parser.parse_args(namespace=args)
-    contours( args.file, **vars(args) )
+    contours( args.input, **vars(args) )
