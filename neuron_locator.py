@@ -216,8 +216,12 @@ def compute_cells( image ):
     contours, contourImg = find_contours( img, draw = True, hull = True )
     return contourImg
 
-def df_by_f( roi, frames ):
-    logger.info( "ROI: %s" % str(roi) )
+def df_by_f( roi, frames, roi_index = None ):
+    msg = 'ROI %s' % str(roi)
+    if roi_index is not None:
+        msg = ('%s : ' % roi_index) + msg
+    logger.info( msg )
+
     yvec = []
     for f in frames:
         col, row, w, h = roi
@@ -232,7 +236,7 @@ def df_by_f_data( rois, frames ):
 
     dfmat = np.zeros( shape = ( len(rois), len(frames) ))
     for i, r in enumerate(rois):
-        vec = df_by_f( r, frames )
+        vec = df_by_f( r, frames, i )
         dfmat[i,:] = vec
     
     outfile = '%s/df_by_f.dat' % e.save_direc_
@@ -304,6 +308,7 @@ def process_input( ):
     # Here we use the collected rois which are acceptable as cells and filter
     # out overlapping contours
     boxes = get_roi_containing_minimum_cells( )
+    logger.info("== Total ROIs = %s" % len(boxes))
 
     dfmat = df_by_f_data( boxes, frames )
     e.images_['df_by_f'] = dfmat
@@ -331,7 +336,7 @@ def plot_results( ):
 
     ax = plt.subplot( gs[1,1] )
     ax.imshow( e.images_['neurons'], aspect = 'equal' )
-    ax.set_title('Maximal set of ROIs', fontsize = 10)
+    ax.set_title('Filtered ROIs', fontsize = 10)
     plt.suptitle(txt , fontsize = 8)
     outfiles.append('%s_0.%s' % tuple(e.args_.output.rsplit('.', 1 )))
 
