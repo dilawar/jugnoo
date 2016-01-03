@@ -309,45 +309,51 @@ def process_input( ):
     e.images_['df_by_f'] = dfmat
 
 def plot_results( ):
-
-    ax = plt.subplot(3, 2, 1)
-    ax.imshow( e.images_['summary'] )
-    ax.set_title( "Summary of activity in region", fontsize = 10 )
-
-    ax = plt.subplot(3, 2, 2)
-    ax.imshow(  e.images_['rois'] )
-    ax.set_title( 'Computed ROIs', fontsize = 10 )
-
-    ax = plt.subplot(3, 2, 3)
-    ax.imshow( 0.99*e.images_['summary'] + e.images_['bound_area'] )
-    ax.set_title( 'Clusters for df/F', fontsize = 10 )
-
-    ax = plt.subplot(3, 2, 4)
-    ax.imshow( e.images_['neurons'] )
-    ax.set_title('Maximal set of ROIs', fontsize = 10)
-
-    ax = plt.subplot( 3, 1, 3, frameon=False ) 
-    im = ax.imshow( e.images_['df_by_f'] )
-    ax.set_title( '100*df/F in rectangle(cluster). Baseline, min() of vector' 
-            , fontsize = 10
-            )
-    plt.colorbar( im, orientation = 'horizontal' )
-
+    outfiles = []
     stamp = datetime.datetime.now().isoformat()
-
     txt = "%s" % e.args_.input.split('/')[-1]
     txt += ' @ %s' % stamp
     txt += ', 1 px = %s micro-meter' % e.args_.pixal_size
-    plt.suptitle(txt
-            , fontsize = 8
-            , horizontalalignment = 'left'
-            , verticalalignment = 'bottom' 
-            )
-    plt.tight_layout( 1.5 )
-    logger.info('Saved results to %s' % e.args_.output)
+
+    gs = matplotlib.gridspec.GridSpec(2, 2)
+    ax = plt.subplot( gs[0,0] )
+    ax.imshow( e.images_['summary'], aspect='equal' )
+    ax.set_title( "Summary of activity in region", fontsize = 10 )
+
+    ax = plt.subplot( gs[0,1] )
+    ax.imshow(  e.images_['rois'] , aspect = 'equal'  )
+    ax.set_title( 'Computed ROIs', fontsize = 10 )
+
+    ax = plt.subplot( gs[1,0] )
+    ax.imshow( 0.99*e.images_['summary']+e.images_['bound_area'], aspect='equal')
+    ax.set_title( 'Clusters for df/F', fontsize = 10 )
+
+    ax = plt.subplot( gs[1,1] )
+    ax.imshow( e.images_['neurons'], aspect = 'equal' )
+    ax.set_title('Maximal set of ROIs', fontsize = 10)
     if e.args_.debug:
         plt.show( )
-    plt.savefig( e.args_.output )
+    plt.tight_layout()
+    outfiles.append('%s_0.%s' % tuple(e.args_.output.rsplit('.', 1 )))
+    plt.savefig( outfiles[-1] )
+    plt.suptitle(txt , fontsize = 8)
+
+    plt.figure()
+    axe = plt.subplot(1, 1, 1)
+    im = ax.imshow( e.images_['df_by_f'])
+    ax.set_title('100*df/F in rectangle(cluster). Baseline, min() of vector' 
+            , fontsize = 10
+            )
+    plt.colorbar( im ) # orientation = 'horizontal' )
+    plt.tight_layout( 1.5 )
+    if e.args_.debug:
+        plt.show( )
+    plt.tight_layout( )
+    plt.suptitle( txt, fontsize = 8 )
+    outfiles.append( '%s_1.%s' % tuple(e.args_.output.rsplit('.', 1 )))
+    plt.savefig( outfiles[-1] )
+    logger.info('Saved results to %s' % outfiles)
+
 
 def main( ):
     init( )

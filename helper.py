@@ -31,7 +31,7 @@ def remove_duplicates( cells, result = [] ):
 
     cells = sorted( cells, key = lambda x: x.radius )
     if len(cells) <= 1:
-        logger.info("After remove_duplicates: %s" %  (result + cells))
+        logger.info("After remove_duplicates: %s" %  len(result + cells))
         return result + cells
 
     temp, c = [],  cells[0]
