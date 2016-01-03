@@ -125,7 +125,7 @@ def get_rois( frames, window):
         bundle = frames[low:high]
         sumAll = np.zeros( e.shape_ )
         for f in bundle:
-            ff = threshold_frame( f, nstd = 2)
+            ff = threshold_frame( f, nstd = 0)
             sumAll += ff
         edges = get_edges( sumAll )
         merge_image = np.concatenate( (to_grayscale(sumAll), edges), axis=0)
@@ -284,7 +284,7 @@ def process_input( ):
     # get the summary of all activity
     summary = np.zeros( shape = frames[0].shape )
     for f in frames: summary += f
-    e.images_['summary'] = to_grayscale( summary )
+    e.images_['summary'] = summary
 
     get_rois( frames, window = config.n_frames)
     logger.info("Got all interesting ROIs. TOTAL = %s" % len(e.rois_))
@@ -381,6 +381,7 @@ if __name__ == '__main__':
         , default = "0,0,-1,-1"
         , help = 'Bounding box  row1,column1,row2,column2 e.g 0,0,100,100'
         )
+
     parser.add_argument('--pixal_size', '-px'
         , required = False
         , type = float

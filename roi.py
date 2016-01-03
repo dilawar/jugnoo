@@ -23,7 +23,7 @@ class ROI():
         self.contour = contour
         self.rectangle = cv2.boundingRect( contour )
         self.circle = cv2.minEnclosingCircle( contour )
-        self.area = cv2.contourArea( contour ) * (e.args_.pixal_size ** 2.0)
+        self.area = cv2.contourArea( contour ) 
         if len(contour) > 5:
             self.geometry = cv2.fitEllipse( contour )
             self.geometry_type = 'ellipse'

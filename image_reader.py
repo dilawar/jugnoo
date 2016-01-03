@@ -21,7 +21,6 @@ import logging
 logger = logging.getLogger('')
 
 def get_frame_data( frame ):
-    frame = frame.convert('L')
     img = np.array(frame)
     return img
 
