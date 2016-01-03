@@ -18,19 +18,6 @@ import logging
 class Args: pass
 args_ = Args()
 
-logging.basicConfig(level=logging.DEBUG,
-    format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
-    datefmt='%m-%d %H:%M',
-    filename='__log__.log',
-    filemode='w')
-console = logging.StreamHandler()
-console.setLevel(logging.INFO)
-formatter = logging.Formatter('%(name)-12s: %(levelname)-8s %(message)s')
-console.setFormatter(formatter)
-_logger = logging.getLogger('')
-_logger.addHandler(console)
-
-
 # Threshold value for canny edge detector.
 high_threshold = 200
 elow, ehigh = high_threshold/2.0, high_threshold
@@ -53,3 +40,5 @@ min_neuron_area = 5
 
 # Canny edge detector window size for Guassian smoothening. Use 3,
 canny_window_size = 3
+
+
