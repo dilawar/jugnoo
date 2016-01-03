@@ -27,12 +27,13 @@ def compute_overlap( cell1, cell2 ):
         return False, sep
     return True, sep
 
-
 def remove_duplicates( cells, result = [] ):
+
     cells = sorted( cells, key = lambda x: x.radius )
     if len(cells) <= 1:
-        logger.debug("After remove_duplicates: %s" %  (result + cells))
+        logger.info("After remove_duplicates: %s" %  (result + cells))
         return result + cells
+
     temp, c = [],  cells[0]
     result.append(c)
     for cc in cells[1:]:
@@ -50,6 +51,7 @@ def remove_duplicates( cells, result = [] ):
         else:
             logger.debug("Similar: %s, %s" % (c, cc))
             continue 
+    assert len(temp) < len(cells), "Must reduce the size by 1 in each loop"
     return remove_duplicates( temp, result )
 
 def remove_contained_cells( cells, result = [] ):

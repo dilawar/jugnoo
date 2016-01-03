@@ -14,13 +14,16 @@ __email__            = "dilawars@ncbs.res.in"
 __status__           = "Development"
 
 import cv2 
+import environment as e
+import logging
+logger = logging.getLogger( '' )
 
 class Cell():
     def __init__(self, contour):
         self.contour = contour
         self.rectangle = cv2.boundingRect( contour )
         self.circle = cv2.minEnclosingCircle( contour )
-        self.area = cv2.contourArea( contour ) * (config.args_.pixal_size ** 2.0)
+        self.area = cv2.contourArea( contour ) * (e.args_.pixal_size ** 2.0)
         if len(contour) > 5:
             self.geometry = cv2.fitEllipse( contour )
             self.geometry_type = 'ellipse'

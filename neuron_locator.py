@@ -41,11 +41,6 @@ def init( ):
         logging.info("Creating dir %s for saving data" % e.save_direc_)
         os.makedirs( e.save_direc_ )
 
-def get_frame_data( frame ):
-    frame = frame.convert('L')
-    img = np.array(frame)
-    return img
-
 def to_grayscale( img ):
     if img.max() >= 256.0:
         logging.debug("Converting image to grayscale")
@@ -76,6 +71,7 @@ def get_activity_vector( frames ):
     logging.info("Writing activity to %s" % actFlie)
     header = "frame index"
     np.savetxt(actFlie, activity, delimiter=',', header=header)
+    logging.info("... Wrote!")
     return activity
 
 def threshold_frame( frame, nstd = None):
@@ -129,16 +125,13 @@ def get_rois( frames, window):
         bundle = frames[low:high]
         sumAll = np.zeros( e.shape_ )
         for f in bundle:
-            e = threshold_frame( f, nstd = 2)
-            sumAll += e
+            ff = threshold_frame( f, nstd = 2)
+            sumAll += ff
         edges = get_edges( sumAll )
-
         merge_image = np.concatenate( (to_grayscale(sumAll), edges), axis=0)
         save_image( 'edges_%s.png' % i, merge_image)
-
         #  Also creates a list of acceptable cells in each frame.
         cellImg = compute_cells( edges )
-
         save_image( 'cell_%s.png' % i, cellImg )
         roi += cellImg
         allEdges += edges 
@@ -152,6 +145,7 @@ def get_rois( frames, window):
     #  Use this to locate the clusters of cell in all frames. 
     cnts, cntImgs = find_contours( to_grayscale(roi), draw = True, fill = True)
     e.images_['bound_area'] = get_edges( cntImgs )
+    logger.info("Done processing all the contours. Computed the bounded areas")
 
 def find_contours( img, **kwargs ):
     logger.debug("find_contours with option: %s" % kwargs)
@@ -182,27 +176,26 @@ def find_contours( img, **kwargs ):
 
 def acceptable( contour ):
     """Various conditions under which a contour is not a cell """
-    global cells_
     # First fit it with an ellipse
-    cell = cell.Cell( contour )
-    if cell.area < config.min_neuron_area:
+    neuron = cell.Cell( contour )
+    if neuron.area < config.min_neuron_area:
         logger.debug("Rejected contour because cell area was too low")
         return False
 
-    if cell.area > config.max_neuron_area:
+    if neuron.area > config.max_neuron_area:
         logger.debug(
-                "Rejected contour %s because of its area=%s" % (contour, cell.area)
+                "Rejected contour %s because of its area=%s" % (contour, neuron.area)
             )
         return False
 
     # If the lower axis is 0.7 or more times of major axis, then aceept it.
-    if cell.eccentricity < 0.7:
+    if neuron.eccentricity < 0.7:
         msg = "Contour %s is rejected because " % contour
-        msg += "axis ration (%s) of cell is too skewed" % cell.eccentricity
+        msg += "axis ration (%s) of cell is too skewed" % neuron.eccentricity
         logger.debug( msg )
         return False
 
-    cells_.append( cell )
+    e.cells_.append( neuron )
     return True
 
 def compute_cells( image ):
@@ -257,19 +250,23 @@ def merge_or_reject_cells( cells ):
     # sort according to area
     cells = sorted( cells, key = lambda x: x.area )
 
-    # Get cells with with area in sweat range : 10 - 12 um diameter.
-    # keypoins = [ cv2.KeyPoint(c.center[0], c.center[1], c.radius ) for c in cells ]
-    cells = helper.remove_duplicates( cells )
-
     # Now remove all those cells which are inside another cells. They should be
     # close enough in size.
+    logger.info("Removing overlapping cells")
     cells = helper.remove_contained_cells( cells )
+    logger.info("== Done removing overlapping cells")
+
+    # Get cells with with area in sweat range : 10 - 12 um diameter.
+    # keypoins = [ cv2.KeyPoint(c.center[0], c.center[1], c.radius ) for c in cells ]
+    logger.info("Removing duplicate ROIs")
+    cells = helper.remove_duplicates( cells )
+    logger.info("== Done removing duplicated")
     return cells
 
 def get_roi_containing_minimum_cells( ):
     neuronImg = np.zeros( shape = e.shape_ )
     coolcells = []
-    for cell in cells_:
+    for cell in e.cells_:
         # If area of contour is too low, reject it.
         area = cell.area
         if area < config.min_neuron_area:
@@ -277,7 +274,9 @@ def get_roi_containing_minimum_cells( ):
         coolcells.append( cell )
 
     # Now we need reject some of these rectangles.
+    logger.info("Merging or rejecting ROIs to find suitable cells")
     coolerCells = merge_or_reject_cells( coolcells )
+    logger.info("Done merging or rejecting ROIs")
 
     # Replace boxex with cells later.
     boxes = []
@@ -288,7 +287,9 @@ def get_roi_containing_minimum_cells( ):
     e.images_['neurons'] = neuronImg
     return set(boxes)
 
-def process_input( inputfile, bbox = None ):
+def process_input( ):
+    inputfile = e.args_.input
+
     logger.info("Processing %s" % inputfile)
     frames = image_reader.read_frames( inputfile )
     
@@ -298,6 +299,7 @@ def process_input( inputfile, bbox = None ):
     e.images_['summary'] = to_grayscale( summary )
 
     get_rois( frames, window = config.n_frames)
+    logger.info("Got all interesting ROIs")
 
     # Here we use the collected rois which are acceptable as cells and filter
     # out overlapping contours
@@ -333,7 +335,7 @@ def plot_results( ):
 
     stamp = datetime.datetime.now().isoformat()
 
-    txt = "%s" % e.args_input.split('/')[-1]
+    txt = "%s" % e.args_.input.split('/')[-1]
     txt += ' @ %s' % stamp
     txt += ', 1 px = %s micro-meter' % e.args_.pixal_size
     plt.suptitle(txt
@@ -342,26 +344,14 @@ def plot_results( ):
             , verticalalignment = 'bottom' 
             )
     plt.tight_layout( 1.5 )
-    logger.info('Saved results to %s' % e.args_.outfile)
+    logger.info('Saved results to %s' % e.args_.output)
     if e.args_.debug:
         plt.show( )
-    plt.savefig( e.args_.outfile )
-
-def get_bounding_box( ):
-    bbox = [ int(x) for x in e.args_.box.split(',') ]
-    r1, c1, h, w = bbox
-
-    if h == -1: r2 = h
-    else: r2 = r1 + h
-    if w == -1: c2 = w
-    else: c2 = c1 + w
-    return (r1, c1, r2, c2)
+    plt.savefig( e.args_.output )
 
 def main( ):
     init( )
-    bbox = get_bounding_box( )
-    logger.info("== Bounding box: %s" % str(bbox))
-    process_input( e.args_.input, bbox = bbox )
+    process_input(  )
     plot_results( )
 
 if __name__ == '__main__':
