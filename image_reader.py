@@ -15,6 +15,7 @@ __status__           = "Development"
 
 import numpy as np
 import environment as e
+import cv2
 
 import logging 
 logger = logging.getLogger('')
@@ -33,6 +34,22 @@ def get_bounding_box( ):
     if w == -1: c2 = w
     else: c2 = c1 + w
     return (r1, c1, r2, c2)
+
+def read_frames_from_avi( filename ):
+    cap = cv2.VideoCapture( filename )
+    frames = []
+    while cap.isOpened():
+        try:
+            ret, frame = cap.read()
+        except Exception as e:
+            print("Failed to read frame. Error %s" % e)
+            quit()
+        if ret:
+            gray = cv2.cvtColor( frame, cv2.COLOR_BGR2GRAY)
+            frames.append( gray )
+
+    logger.info("Total %s frames read" % len(frames))
+    return frames
 
 
 def read_frames_from_tiff( filename ):
@@ -58,6 +75,8 @@ def read_frames( videofile ):
     ext = videofile.split('.')[-1]
     if ext in [ 'tif', 'tiff' ]:
         return read_frames_from_tiff( videofile )
+    elif ext in [ 'avi', 'mp4' ]:
+        return read_frames_from_avi ( videofile )
     else:
-        logger.error('Format %s is not supported yet' )
+        logger.error('Format %s is not supported yet' % ext )
         quit()
