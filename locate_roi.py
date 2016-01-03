@@ -272,7 +272,9 @@ def process_input( ):
 
     boxes = []
     for c in reallyCoolCells:
-        text.append( '%s,%s,%s' % ( c.center[0], c.center[1], c.radius ))
+        text.append( '%s,%s,%s' % ( 
+            int(c.center[0]), int(c.center[1]), int(c.radius))
+            )
         boxes.append( c.rectangle )
     with open( roifile, 'w' ) as f:
         f.write( '\n'.join( text ) )

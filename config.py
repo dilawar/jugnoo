@@ -15,7 +15,7 @@ min_points_in_contours = 2
 n_frames = 1
 
 # Maximum diameter (in pixals) of potential ROIs (approximated by a circle).
-max_roi_diameter = 20
+max_roi_diameter = 15
 
 # Minimum diameter (in pixal ) of a ROI.
 # case of doubt, make it zero.
