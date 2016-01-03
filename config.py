@@ -19,7 +19,7 @@ max_roi_diameter = 20
 
 # Minimum diameter (in pixal ) of a ROI.
 # case of doubt, make it zero.
-min_roi_diameter = 1
+min_roi_diameter = 5
 
 # Canny edge detector window size for Guassian smoothening. Use 3,
 canny_window_size = 3

@@ -59,7 +59,8 @@ def remove_contained_cells( cells, result = [] ):
     if len(cells) <= 1:
         logger.debug("After remove_contained_cells: %s" % (result + cells ))
         return result + cells 
-    cells = sorted( cells, key = lambda x : x.radius, reverse = True )
+    cells = sorted( cells, key = lambda x : x.radius)
+    cells.reverse()
     c = cells[0]
     result.append(c)
     temp = []

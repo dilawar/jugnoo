@@ -25,7 +25,19 @@ def get_frame_data( frame ):
         img = np.array(frame)
     except Exception as e:
         img = np.array(frame.convert('L'))
-    return img
+    return to_grayscale(img)
+
+def to_grayscale( img ):
+    if len(img.shape) == 3:
+        img = np.dot( img[...,:3], [ 0.299, 0.587, 0.114 ] )
+
+    if img.max() >= 256.0:
+        logging.debug("Converting image to grayscale")
+        logging.debug("Max=%s, min=%s, std=%s"% (img.max(), img.min(),
+            img.std()))
+        img = 255 * ( img / float( img.max() ))
+    gimg = np.array(img, dtype=np.uint8)
+    return gimg
 
 def get_bounding_box( ):
     bbox = [ int(x) for x in e.args_.box.split(',') ]

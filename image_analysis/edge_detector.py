@@ -26,7 +26,7 @@ def debug__( msg, level = 1 ):
     # Print debug message depending on level
     global debug_level_ 
     if type(msg) == list: msg = '\n|- '.join(msg)
-    if level <= debug_level_: print( msg )
+    if level < debug_level_: print( msg )
 
 def all_edges( img, **kwargs ):
     global debug_level_

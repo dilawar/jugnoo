@@ -20,17 +20,21 @@ import numpy as np
 import helper
 import edge_detector
 
-def contours( filename, **kwargs ):
+def get_contours( filename, **kwargs ):
     print('[INFO] Detecting contours in %s' % filename)
     img = cv2.imread(filename, 0)
-    debugLevel = kwargs.get('debug')
-    kwargs.pop('debug')
-    edges = edge_detector.edges( filename, debug = 0, **kwargs )
-    cnts, heir = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    if debugLevel:
+    return contours(img, **kwargs)
+
+def contours(img, **kwargs):
+    debugLevel = kwargs.get('debug', -1)
+    edges = edge_detector.all_edges( img, debug = 0, **kwargs )
+    cnts, heir = cv2.findContours(edges, cv2.RETR_EXTERNAL
+            , cv2.CHAIN_APPROX_TC89_KCOS)
+    if debugLevel > 0:
         cntImg = np.zeros( img.shape )
         cv2.drawContours( cntImg, cnts, -1, 255 )
         helper.plot_images( { 'original' : img, 'contours' : cntImg } )
+    return cnts
 
 if __name__ == '__main__':
     import argparse

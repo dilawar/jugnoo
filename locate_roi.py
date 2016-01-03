@@ -25,7 +25,7 @@ from image_analysis import edge_detector
 from image_analysis import contour_detector 
 import environment as e
 import roi
-import image_reader
+import image_reader as imgr
 
 import logging
 logger = logging.getLogger('')
@@ -40,24 +40,6 @@ def init( ):
     else:
         logging.info("Creating dir %s for saving data" % e.save_direc_)
         os.makedirs( e.save_direc_ )
-
-def to_grayscale( img ):
-    if img.max() >= 256.0:
-        logging.debug("Converting image to grayscale")
-        logging.debug("Max=%s, min=%s, std=%s"% (img.max(), img.min(),
-            img.std()))
-        img = 255 * ( img / float( img.max() ))
-    gimg = np.array(img, dtype=np.uint8)
-    return gimg
-
-def get_edges( frame ):
-    cannyFrame = to_grayscale( frame )
-    edges = cv2.Canny( cannyFrame
-            , config.elow, config.ehigh
-            , L2gradient = True
-            , apertureSize = config.canny_window_size
-            )
-    return edges
 
 def get_activity_vector( frames ):
     """Given a list of frames, return the indices of frames where there is an
@@ -86,12 +68,12 @@ def threshold_frame( frame, nstd = None):
     logging.debug("Thresholding at %s + %s * %s" % (mean, nstd, std))
     logging.debug("|-  low, high = %s, %s" % (low, high))
     frame = stat.threshold( frame, low, high, newval = 0)
-    return to_grayscale( frame )
+    return imgr.to_grayscale( frame )
 
 def save_image( filename, img, **kwargs):
     """Store a given image to filename """
     if e.args_.debug:
-        img = to_grayscale( img )
+        img = imgr.to_grayscale( img )
         outfile = os.path.join( e.save_direc_, filename )
         logging.info( 'Saving image to %s ' % outfile )
         cv2.imwrite( outfile , img )
@@ -109,7 +91,6 @@ def write_ellipses( ellipses ):
 def get_rois( frames, window):
     # Compute the region of interest.
     e.shape_ = frames[0].shape
-
     activityVec = get_activity_vector( frames )
     e.images_['activity'] = np.array( activityVec )
 
@@ -127,8 +108,9 @@ def get_rois( frames, window):
         for f in bundle:
             ff = threshold_frame( f, nstd = 2)
             sumAll += ff
-        edges = get_edges( sumAll )
-        merge_image = np.concatenate( (to_grayscale(sumAll), edges), axis=0)
+        sumAll = imgr.to_grayscale( sumAll )
+        edges = edge_detector.all_edges( sumAll )
+        merge_image = np.concatenate( (sumAll, edges), axis=0)
         save_image( 'edges_%s.png' % i, merge_image)
         #  Also creates a list of acceptable cells in each frame.
         cellImg = compute_cells( edges )
@@ -137,26 +119,19 @@ def get_rois( frames, window):
         allEdges += edges 
 
     e.images_['all_edges'] = allEdges
-    e.images_['rois'] = to_grayscale(roi)
+    e.images_['rois'] = imgr.to_grayscale(roi)
 
     save_image( 'all_edges.png', allEdges, title = 'All edges')
     save_image( 'rois.png', roi )
 
     #  Use this to locate the clusters of cell in all frames. 
-    cnts, cntImgs = find_contours( to_grayscale(roi), draw = True, fill = True)
-    e.images_['bound_area'] = get_edges( cntImgs )
+    cnts, cntImgs = find_contours( imgr.to_grayscale(roi), draw = True, fill = True)
+    e.images_['bound_area'] = edge_detector.all_edges( cntImgs )
     logger.info("Done processing all the contours. Computed the bounded areas")
 
 def find_contours( img, **kwargs ):
     logger.debug("find_contours with option: %s" % kwargs)
-    # Just return external points of contours, and apply Ten-Chin chain
-    # approximation algorithm. 
-    
-    contours, h = cv2.findContours(img
-            , cv2.RETR_LIST              # No Homo Hierarichus!
-            , cv2.CHAIN_APPROX_TC89_KCOS # Apply Tin-Chen algo to return
-                                         # dominant point of curve.
-            )
+    contours = contour_detector.contours( img )
     if kwargs.get('hull', True):
         logger.debug("Approximating contours with hull")
         contours = [ cv2.convexHull( x ) for x in contours ]
@@ -279,7 +254,7 @@ def process_input( ):
     inputfile = e.args_.input
 
     logger.info("Processing %s" % inputfile)
-    frames = image_reader.read_frames( inputfile )
+    frames = imgr.read_frames( inputfile )
     
     # get the summary of all activity
     summary = np.zeros( shape = frames[0].shape )
