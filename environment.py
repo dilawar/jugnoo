@@ -20,7 +20,7 @@ args_ = Args()
 shape_ = None
 images_ = {}
 save_direc_ = None
-cells_ = []
+rois_ = []
 
 logging.basicConfig(level=logging.DEBUG,
     format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',

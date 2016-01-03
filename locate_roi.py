@@ -177,21 +177,21 @@ def find_contours( img, **kwargs ):
 def acceptable( contour ):
     """Various conditions under which a contour is not a cell """
     # First fit it with an ellipse
-    roi = roi.ROI( contour )
+    r = roi.ROI( contour )
     # If area of contour is too low, reject it.
-    diam = 2.0 * roi.radius
+    diam = 2.0 * r.radius
     if diam < config.min_roi_diameter or diam > config.max_roi_diameter:
         logger.debug( "Rejected ROI. Diameter is low or high (%s)" % diam)
-        continue
+        return False
 
     # If the lower axis is 0.7 or more times of major axis, then aceept it.
-    if roi.eccentricity < 0.7:
+    if r.eccentricity < 0.7:
         msg = "Contour %s is rejected because " % contour
-        msg += "axis ration (%s) of cell is too skewed" % roi.eccentricity
+        msg += "axis ration (%s) of cell is too skewed" % r.eccentricity
         logger.debug( msg )
         return False
 
-    e.cells_.append( roi )
+    e.rois_.append( r )
     return True
 
 def compute_cells( image ):
@@ -262,21 +262,18 @@ def merge_or_reject_cells( cells ):
     return cells
 
 def get_roi_containing_minimum_cells( ):
-    neuronImg = np.zeros( shape = e.shape_ )
-    coolcells = []
-
+    roiImg = np.zeros( shape = e.shape_ )
     # Now we need reject some of these rectangles.
     logger.info("Merging or rejecting ROIs to find suitable cells")
-    coolerCells = merge_or_reject_cells( coolcells )
-    logger.info("Done merging or rejecting ROIs")
+    rois = merge_or_reject_cells( e.rois_  )
+    logger.info("Done merging or rejecting ROIs. Total %s" % len(rois))
 
     # create an image of these rois.
-    for c in coolerCells:
+    for c in rois:
         center, radius = c.center, int(c.radius)
-        cv2.circle( neuronImg, ( int(center[0]), int(center[1])), radius, 255, 1)
-    e.images_['neurons'] = neuronImg
-
-    return coolerCells 
+        cv2.circle( roiImg, ( int(center[0]), int(center[1])), radius, 255, 1)
+    e.images_['cool_rois'] = roiImg
+    return rois 
 
 def process_input( ):
     inputfile = e.args_.input
@@ -290,7 +287,7 @@ def process_input( ):
     e.images_['summary'] = to_grayscale( summary )
 
     get_rois( frames, window = config.n_frames)
-    logger.info("Got all interesting ROIs")
+    logger.info("Got all interesting ROIs. TOTAL = %s" % len(e.rois_))
 
     # Here we use the collected rois which are acceptable as cells and filter
     # out overlapping contours
@@ -331,7 +328,7 @@ def plot_results( ):
     ax.set_title( 'Clusters for df/F', fontsize = 10 )
 
     ax = plt.subplot( gs[1,1] )
-    ax.imshow( e.images_['neurons'], aspect = 'equal' )
+    ax.imshow( e.images_['cool_rois'], aspect = 'equal' )
     ax.set_title('Filtered ROIs', fontsize = 10)
     plt.suptitle(txt , fontsize = 8)
     outfiles.append('%s_0.%s' % tuple(e.args_.output.rsplit('.', 1 )))

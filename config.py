@@ -15,11 +15,11 @@ min_points_in_contours = 2
 n_frames = 2
 
 # Maximum diameter (in pixals) of potential ROIs (approximated by a circle).
-max_roi_diameter = 10
+max_roi_diameter = 15
 
 # Minimum diameter (in pixal ) of a ROI.
 # case of doubt, make it zero.
-min_roi_diameter = 1
+min_roi_diameter = 5
 
 # Canny edge detector window size for Guassian smoothening. Use 3,
 canny_window_size = 3
