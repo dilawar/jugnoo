@@ -315,6 +315,7 @@ def plot_results( ):
     txt += ' @ %s' % stamp
     txt += ', 1 px = %s micro-meter' % e.args_.pixal_size
 
+    plt.figure()
     gs = matplotlib.gridspec.GridSpec(2, 2)
     ax = plt.subplot( gs[0,0] )
     ax.imshow( e.images_['summary'], aspect='equal' )
@@ -331,27 +332,25 @@ def plot_results( ):
     ax = plt.subplot( gs[1,1] )
     ax.imshow( e.images_['neurons'], aspect = 'equal' )
     ax.set_title('Maximal set of ROIs', fontsize = 10)
+    plt.suptitle(txt , fontsize = 8)
+    outfiles.append('%s_0.%s' % tuple(e.args_.output.rsplit('.', 1 )))
+
     if e.args_.debug:
         plt.show( )
-    plt.tight_layout()
-    outfiles.append('%s_0.%s' % tuple(e.args_.output.rsplit('.', 1 )))
     plt.savefig( outfiles[-1] )
-    plt.suptitle(txt , fontsize = 8)
 
-    plt.figure()
-    axe = plt.subplot(1, 1, 1)
-    im = ax.imshow( e.images_['df_by_f'])
+    ax = plt.subplot(1, 1, 1)
+    im = ax.imshow( e.images_['df_by_f'], aspect = 'auto' )
     ax.set_title('100*df/F in rectangle(cluster). Baseline, min() of vector' 
             , fontsize = 10
             )
-    plt.colorbar( im ) # orientation = 'horizontal' )
-    plt.tight_layout( 1.5 )
+    plt.colorbar( im,  orientation = 'horizontal' )
     if e.args_.debug:
         plt.show( )
-    plt.tight_layout( )
     plt.suptitle( txt, fontsize = 8 )
     outfiles.append( '%s_1.%s' % tuple(e.args_.output.rsplit('.', 1 )))
     plt.savefig( outfiles[-1] )
+
     logger.info('Saved results to %s' % outfiles)
 
 
