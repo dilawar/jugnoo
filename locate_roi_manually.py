@@ -44,13 +44,12 @@ img_ = None
 cv2.namedWindow('image')
 cv2.setMouseCallback('image', draw_roi)
 
-def write_roi( ):
-    global circles
-    roiFile = kwargs.get('output') or '%s_manual_rois.csv' % filename
+def write_roi( outfile ):
+    global rois
     txt = [ 'col,row,radius' ]
-    for c in circles:
+    for c in rois:
         txt.append( '%d,%d,%d' % tuple(c))
-    with open(roiFile, 'w') as f:
+    with open(outfile, 'w') as f:
         f.write( '\n'.join( txt ) )
     print('[INFO] Wrote all ROIs to %s' % outfile )
 
@@ -69,7 +68,8 @@ def main( filename, **kwargs):
         if ord('q') == k:
             break
     cv2.destroyAllWindows()
-    write_roi( )
+    outfile = kwargs.get('output')  or '%s_manual_rois.csv' % filename
+    write_roi( outfile )
 
 if __name__ == '__main__':
     import argparse
