@@ -21,7 +21,10 @@ import logging
 logger = logging.getLogger('')
 
 def get_frame_data( frame ):
-    img = np.array(frame)
+    try:
+        img = np.array(frame)
+    except Exception as e:
+        img = np.array(frame.convert('L'))
     return img
 
 def get_bounding_box( ):

@@ -125,7 +125,7 @@ def get_rois( frames, window):
         bundle = frames[low:high]
         sumAll = np.zeros( e.shape_ )
         for f in bundle:
-            ff = threshold_frame( f, nstd = 0)
+            ff = threshold_frame( f, nstd = 2)
             sumAll += ff
         edges = get_edges( sumAll )
         merge_image = np.concatenate( (to_grayscale(sumAll), edges), axis=0)
@@ -336,6 +336,7 @@ def plot_results( ):
     if e.args_.debug:
         plt.show( )
     plt.savefig( outfiles[-1] )
+    logger.info('Saved results to %s' % outfiles)
 
     ##ax = plt.subplot(1, 1, 1)
     ##im = ax.imshow( e.images_['df_by_f'], aspect = 'auto' )
@@ -349,7 +350,6 @@ def plot_results( ):
     ##outfiles.append( '%s_1.%s' % tuple(e.args_.output.rsplit('.', 1 )))
     ##plt.savefig( outfiles[-1] )
 
-    ##logger.info('Saved results to %s' % outfiles)
 
 
 def main( ):
