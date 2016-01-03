@@ -24,7 +24,7 @@ import helper
 from image_analysis import edge_detector 
 from image_analysis import contour_detector 
 import environment as e
-import cell
+import roi
 import image_reader
 
 import logging
@@ -177,25 +177,21 @@ def find_contours( img, **kwargs ):
 def acceptable( contour ):
     """Various conditions under which a contour is not a cell """
     # First fit it with an ellipse
-    neuron = cell.Cell( contour )
-    if neuron.area < config.min_neuron_area:
-        logger.debug("Rejected contour because cell area was too low")
-        return False
-
-    if neuron.area > config.max_neuron_area:
-        logger.debug(
-                "Rejected contour %s because of its area=%s" % (contour, neuron.area)
-            )
-        return False
+    roi = roi.ROI( contour )
+    # If area of contour is too low, reject it.
+    diam = 2.0 * roi.radius
+    if diam < config.min_roi_diameter or diam > config.max_roi_diameter:
+        logger.debug( "Rejected ROI. Diameter is low or high (%s)" % diam)
+        continue
 
     # If the lower axis is 0.7 or more times of major axis, then aceept it.
-    if neuron.eccentricity < 0.7:
+    if roi.eccentricity < 0.7:
         msg = "Contour %s is rejected because " % contour
-        msg += "axis ration (%s) of cell is too skewed" % neuron.eccentricity
+        msg += "axis ration (%s) of cell is too skewed" % roi.eccentricity
         logger.debug( msg )
         return False
 
-    e.cells_.append( neuron )
+    e.cells_.append( roi )
     return True
 
 def compute_cells( image ):
@@ -260,8 +256,6 @@ def merge_or_reject_cells( cells ):
     cells = helper.remove_contained_cells( cells )
     logger.info("== Done removing overlapping cells")
 
-    # Get cells with with area in sweat range : 10 - 12 um diameter.
-    # keypoins = [ cv2.KeyPoint(c.center[0], c.center[1], c.radius ) for c in cells ]
     logger.info("Removing duplicate ROIs")
     cells = helper.remove_duplicates( cells )
     logger.info("== Done removing duplicated")
@@ -270,26 +264,19 @@ def merge_or_reject_cells( cells ):
 def get_roi_containing_minimum_cells( ):
     neuronImg = np.zeros( shape = e.shape_ )
     coolcells = []
-    for cell in e.cells_:
-        # If area of contour is too low, reject it.
-        area = cell.area
-        if area < config.min_neuron_area:
-            continue
-        coolcells.append( cell )
 
     # Now we need reject some of these rectangles.
     logger.info("Merging or rejecting ROIs to find suitable cells")
     coolerCells = merge_or_reject_cells( coolcells )
     logger.info("Done merging or rejecting ROIs")
 
-    # Replace boxex with cells later.
-    boxes = []
+    # create an image of these rois.
     for c in coolerCells:
-        (x, y), r = c.circle
-        cr = cv2.circle( neuronImg, (int(x), int(y)), int(r) , 255, 1)
-        boxes.append( c.rectangle )
+        center, radius = c.center, int(c.radius)
+        cv2.circle( neuronImg, ( int(center[0]), int(center[1])), radius, 255, 1)
     e.images_['neurons'] = neuronImg
-    return set(boxes)
+
+    return coolerCells 
 
 def process_input( ):
     inputfile = e.args_.input
@@ -307,11 +294,20 @@ def process_input( ):
 
     # Here we use the collected rois which are acceptable as cells and filter
     # out overlapping contours
-    boxes = get_roi_containing_minimum_cells( )
-    logger.info("== Total ROIs = %s" % len(boxes))
+    reallyCoolCells = get_roi_containing_minimum_cells( )
+    roifile = '%s_roi.csv' % inputfile
+    text = [ 'colum,row,radius' ]
 
-    dfmat = df_by_f_data( boxes, frames )
-    e.images_['df_by_f'] = dfmat
+    boxes = []
+    for c in reallyCoolCells:
+        text.append( '%s,%s,%s' % ( c.center[0], c.center[1], c.radius ))
+        boxes.append( c.rectangle )
+    with open( roifile, 'w' ) as f:
+        f.write( '\n'.join( text ) )
+    logger.info( "ROIs are written to %s " % roifile )
+
+    # dfmat = df_by_f_data( boxes, frames )
+    # e.images_['df_by_f'] = dfmat
 
 def plot_results( ):
     outfiles = []
@@ -344,19 +340,19 @@ def plot_results( ):
         plt.show( )
     plt.savefig( outfiles[-1] )
 
-    ax = plt.subplot(1, 1, 1)
-    im = ax.imshow( e.images_['df_by_f'], aspect = 'auto' )
-    ax.set_title('100*df/F in rectangle(cluster). Baseline, min() of vector' 
-            , fontsize = 10
-            )
-    plt.colorbar( im,  orientation = 'horizontal' )
-    if e.args_.debug:
-        plt.show( )
-    plt.suptitle( txt, fontsize = 8 )
-    outfiles.append( '%s_1.%s' % tuple(e.args_.output.rsplit('.', 1 )))
-    plt.savefig( outfiles[-1] )
+    ##ax = plt.subplot(1, 1, 1)
+    ##im = ax.imshow( e.images_['df_by_f'], aspect = 'auto' )
+    ##ax.set_title('100*df/F in rectangle(cluster). Baseline, min() of vector' 
+    ##        , fontsize = 10
+    ##        )
+    ##plt.colorbar( im,  orientation = 'horizontal' )
+    ##if e.args_.debug:
+    ##    plt.show( )
+    ##plt.suptitle( txt, fontsize = 8 )
+    ##outfiles.append( '%s_1.%s' % tuple(e.args_.output.rsplit('.', 1 )))
+    ##plt.savefig( outfiles[-1] )
 
-    logger.info('Saved results to %s' % outfiles)
+    ##logger.info('Saved results to %s' % outfiles)
 
 
 def main( ):
@@ -389,7 +385,7 @@ if __name__ == '__main__':
         , help = 'Bounding box  row1,column1,row2,column2 e.g 0,0,100,100'
         )
     parser.add_argument('--pixal_size', '-px'
-        , required = True
+        , required = False
         , type = float
         , help = 'Pixal size in micro meter'
         )

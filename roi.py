@@ -1,6 +1,6 @@
-"""neuron.py: 
+"""roi.py: 
 
-    A class representing neuron.
+    A class representing roi.
 
 """
     
@@ -18,7 +18,7 @@ import environment as e
 import logging
 logger = logging.getLogger( '' )
 
-class Cell():
+class ROI():
     def __init__(self, contour):
         self.contour = contour
         self.rectangle = cv2.boundingRect( contour )
@@ -37,7 +37,7 @@ class Cell():
             self.radius = self.geometry[1]
             
         self.center = self.geometry[0]
-        logging.debug("A potential cell : %s" % self)
+        logging.debug("A potential ROI : %s" % self)
 
     def __repr__(self):
         return "Center: %s, area: %s" % (self.center, self.area )
