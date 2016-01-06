@@ -61,8 +61,8 @@ def main( imagefile, roi_file, outfile = None):
     print('[INFO] Writing dfbyf data to %s' % outfile)
     pylab.imshow( dfbyfImg )
     pylab.title = 'df/f in ROIs'
-    pylab.xlabel( '# roi ')
-    pylab.ylabel( '# frame ')
+    pylab.xlabel( '# frame ')
+    pylab.ylabel( '# roi ')
     outfile = '%s_df_by_f.png' % ( outfile or imagefile )
     pylab.savefig( outfile )
     print('[INFO] Done saving datafile to %s ' % outfile)
