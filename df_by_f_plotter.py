@@ -65,7 +65,7 @@ def main( imagefile, roi_file, outfile = None):
     pylab.ylabel( '# frame ')
     outfile = '%s_df_by_f.png' % ( outfile or imagefile )
     pylab.savefig( outfile )
-    print('[INFO] Done savinf datafile to %s ' % outfile)
+    print('[INFO] Done saving datafile to %s ' % outfile)
 
 
 if __name__ == '__main__':

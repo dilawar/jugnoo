@@ -1,0 +1,11 @@
+#!/bin/bash
+set -x
+
+if [ ! -f $1 ]; then
+    echo "Usage: $0 tiff_file"
+    exit
+fi
+
+FILENAME=$1
+./locate_roi.py -i $FILENAME 
+./df_by_f_plotter.py -i $FILENAME -r ${FILENAME}_roi.csv

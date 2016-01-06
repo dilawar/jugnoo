@@ -280,9 +280,6 @@ def process_input( ):
         f.write( '\n'.join( text ) )
     logger.info( "ROIs are written to %s " % roifile )
 
-    # dfmat = df_by_f_data( boxes, frames )
-    # e.images_['df_by_f'] = dfmat
-
 def plot_results( ):
     outfiles = []
     stamp = datetime.datetime.now().isoformat()
@@ -314,19 +311,6 @@ def plot_results( ):
         plt.show( )
     plt.savefig( outfiles[-1] )
     logger.info('Saved results to %s' % outfiles)
-
-    ##ax = plt.subplot(1, 1, 1)
-    ##im = ax.imshow( e.images_['df_by_f'], aspect = 'auto' )
-    ##ax.set_title('100*df/F in rectangle(cluster). Baseline, min() of vector' 
-    ##        , fontsize = 10
-    ##        )
-    ##plt.colorbar( im,  orientation = 'horizontal' )
-    ##if e.args_.debug:
-    ##    plt.show( )
-    ##plt.suptitle( txt, fontsize = 8 )
-    ##outfiles.append( '%s_1.%s' % tuple(e.args_.output.rsplit('.', 1 )))
-    ##plt.savefig( outfiles[-1] )
-
 
 
 def main( ):
