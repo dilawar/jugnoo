@@ -44,7 +44,7 @@ def compute_df_by_f( roi, frames ):
     baseline = get_baseline( dfbyf )
     return baseline 
 
-def main( imagefile, roi_file, **kwargs):
+def main( imagefile, roi_file, outfile = None):
     global img_
     rois = get_rois( roi_file )
     frames = fr.read_frames( imagefile )
@@ -56,17 +56,16 @@ def main( imagefile, roi_file, **kwargs):
         vec = np.array(compute_df_by_f( roi, frames ))
         dfbyfImg[i,:] = vec
 
-    outfile = '%s_dfbyf.dat' % ( kwargs.get('output', None) or imagefile )
+    outfile = '%s_dfbyf.dat' % ( outfile or imagefile )
     np.savetxt( outfile, dfbyfImg, delimiter=',' )
     print('[INFO] Writing dfbyf data to %s' % outfile)
     pylab.imshow( dfbyfImg )
     pylab.title = 'df/f in ROIs'
     pylab.xlabel( '# roi ')
     pylab.ylabel( '# frame ')
-    outfile = '%s_df_by_f.png' % (kwargs.get('output', None) or imagefile)
-    pylab.savefig( outfile, dfbyfImg )
-    print('[INFO] Done writing data to %s ' % outfile)
-
+    outfile = '%s_df_by_f.png' % ( outfile or imagefile )
+    pylab.savefig( outfile )
+    print('[INFO] Done savinf datafile to %s ' % outfile)
 
 
 if __name__ == '__main__':
@@ -88,7 +87,7 @@ if __name__ == '__main__':
         , type = int
         , help = 'Enable debug mode. Default 0, debug level'
         )
-    parser.add_argument('--output', '-o'
+    parser.add_argument('--outfile', '-o'
         , required = False
         , help = 'Output file path'
         )
@@ -96,4 +95,4 @@ if __name__ == '__main__':
     class Args: pass 
     args = Args()
     parser.parse_args(namespace=args)
-    main( args.input, args.roifile, ** vars( args ))
+    main( args.input, args.roifile, args.outfile)
