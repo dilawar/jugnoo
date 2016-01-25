@@ -21,7 +21,8 @@ import numpy as np
 import pylab
 
 def get_baseline( vec ):
-    return vec - vec.min()
+    # baseline = mean of first 5 frames.
+    return vec - vec[0:5].mean()
 
 def get_rois( roifile ):
     print('[INFO] Reading rois from %s' % roifile)
@@ -61,7 +62,8 @@ def main( imagefile, roi_file, outfile = None):
     outfile = '%s_dfbyf.dat' % ( outfile or imagefile )
     np.savetxt( outfile, dfbyfImg, delimiter=',' )
     print('[INFO] Writing dfbyf data to %s' % outfile)
-    pylab.imshow( dfbyfImg, cmap = pylab.cm.hot_r )
+    cx = pylab.imshow( dfbyfImg, cmap = pylab.cm.hot)
+    pylab.colorbar( cx , orientation = 'horizontal' )
 
     pylab.title = 'df/f in ROIs'
     pylab.xlabel( '# frame ')
