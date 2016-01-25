@@ -62,7 +62,7 @@ def main( imagefile, roi_file, outfile = None):
     outfile = '%s_dfbyf.dat' % ( outfile or imagefile )
     np.savetxt( outfile, dfbyfImg, delimiter=',' )
     print('[INFO] Writing dfbyf data to %s' % outfile)
-    cx = pylab.imshow( dfbyfImg, cmap = pylab.cm.hot)
+    cx = pylab.imshow( dfbyfImg, cmap = pylab.cm.hot, aspect = 'auto' )
     pylab.colorbar( cx , orientation = 'horizontal' )
 
     pylab.title = 'df/f in ROIs'
