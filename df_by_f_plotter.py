@@ -30,7 +30,7 @@ def get_rois( roifile ):
 
 def compute_df_by_f( roi, frames ):
     """Compute df/f for given ROI in each frame and return the array """
-    row, col, r = roi
+    col, row, r = roi
     p1, p2 = (row-r, col-r), (row+r, col+r) 
     mask = np.zeros( shape = frames[0].shape )
     # Holder to create image with given df/f ratio
@@ -40,7 +40,9 @@ def compute_df_by_f( roi, frames ):
         # Draw a filled circle on mask
         cv2.circle( mask, (int(row), int(col)), int(r), 1, -1) # Filled circle -1
         img[ mask == 1 ] = f[ mask == 1 ]
+        #cv2.imshow( 'mask', img )
         dfbyf[i] =  img.mean() 
+    #cv2.waitKey( 0 )
     baseline = get_baseline( dfbyf )
     return baseline 
 
@@ -59,7 +61,8 @@ def main( imagefile, roi_file, outfile = None):
     outfile = '%s_dfbyf.dat' % ( outfile or imagefile )
     np.savetxt( outfile, dfbyfImg, delimiter=',' )
     print('[INFO] Writing dfbyf data to %s' % outfile)
-    pylab.imshow( dfbyfImg )
+    pylab.imshow( dfbyfImg, cmap = pylab.cm.hot_r )
+
     pylab.title = 'df/f in ROIs'
     pylab.xlabel( '# frame ')
     pylab.ylabel( '# roi ')
