@@ -27,6 +27,10 @@ def get_baseline( vec ):
 def get_rois( roifile ):
     print('[INFO] Reading rois from %s' % roifile)
     rois = np.genfromtxt(roifile, delimiter=',', comments='#', skip_header=True)
+    rois_ = []
+    for r in rois:
+        rois_.append( list(r) )
+    rois = sorted(rois_, key = lambda x: x[1])
     return rois
 
 def compute_df_by_f( roi, frames ):

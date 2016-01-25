@@ -8,7 +8,7 @@ elow, ehigh = high_threshold/2.0, high_threshold
 
 # Min number of points in contours. A good value is 3 - 8. Larger values reject
 # the small ROIs.
-min_points_in_contours = 3
+min_points_in_contours = 4
 
 # Time averaging over frames. Increase this number for motion correction. Larger
 # values will give cleaner ROIs but also reduce their numbers.
