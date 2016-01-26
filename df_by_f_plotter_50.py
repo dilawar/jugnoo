@@ -99,7 +99,7 @@ def main( input_path, roi_file, outfile = None):
     dfbyfMean = np.mean(alldfbyfImg, axis=0)
     dfbyfMean = threshold( dfbyfMean )
 
-    outfile = '%s_dfbyf_avg_%s.dat' % (outfile or imagefile, len(imagefiles) )
+    outfile = '%s_dfbyf_avg_%s_threshold.dat' % (outfile or imagefile, len(imagefiles) )
     np.savetxt( outfile, dfbyfMean, delimiter=',' )
     print('[INFO] Writing dfbyf data to %s' % outfile)
     xmin, xmax = 0, dfbyfMean.shape[1] / args.frame_rate
@@ -114,7 +114,7 @@ def main( input_path, roi_file, outfile = None):
     pylab.title = 'df/f in ROIs'
     pylab.xlabel( 'Time (sec) ')
     pylab.ylabel( '# roi ')
-    outfile = '%s_df_by_f_avg_%s.png' % ( outfile or imagefile, len(imagefiles))
+    outfile = '%s_df_by_f_avg_%s_threshold.png' % ( outfile or imagefile, len(imagefiles))
     pylab.savefig( outfile )
     print('[INFO] Done saving datafile to %s ' % outfile)
 
