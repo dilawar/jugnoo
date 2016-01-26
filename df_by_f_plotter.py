@@ -89,13 +89,18 @@ def main( input_path, roi_file, outfile = None):
     outfile = '%s_dfbyf_avg_%s.dat' % (outfile or imagefile, len(imagefiles) )
     np.savetxt( outfile, dfbyfMean, delimiter=',' )
     print('[INFO] Writing dfbyf data to %s' % outfile)
-    cx = pylab.imshow( dfbyfMean, cmap = pylab.cm.hot, aspect = 'auto',
-            interpolation = 'none'
+    print dfbyfMean.shape
+    xmin, xmax = 0, dfbyfMean.shape[1] / args.frame_rate
+    ymin, ymax = 0, dfbyfMean.shape[0]
+    cx = pylab.imshow( dfbyfMean, cmap = pylab.cm.hot, aspect = 'auto'
+            , extent = (xmin, xmax, ymax, ymin)
+            , interpolation = 'none'
             )
+    pylab.xticks( np.arange( xmin, xmax, 1.0) )
     pylab.colorbar( cx , orientation = 'horizontal' )
 
     pylab.title = 'df/f in ROIs'
-    pylab.xlabel( '# frame ')
+    pylab.xlabel( 'Time (sec) ')
     pylab.ylabel( '# roi ')
     outfile = '%s_df_by_f_avg_%s.png' % ( outfile or imagefile, len(imagefiles))
     pylab.savefig( outfile )
@@ -112,7 +117,6 @@ def process_image_file( rois, imagefile, outfile):
     for i, roi in enumerate(rois):
         vec = np.array(compute_df_by_f( roi, frames ))
         dfbyfImg[i,:] = vec
-
     return dfbyfImg
 
 if __name__ == '__main__':
@@ -138,7 +142,12 @@ if __name__ == '__main__':
         , required = False
         , help = 'Output file path'
         )
-
+    parser.add_argument('--frame_rate', '-fr'
+        , required = False
+        , default = 10.0
+        , type = float
+        , help = 'Frame per second'
+        )
     class Args: pass 
     args = Args()
     parser.parse_args(namespace=args)
