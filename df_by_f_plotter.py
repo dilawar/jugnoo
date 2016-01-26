@@ -88,7 +88,9 @@ def main( input_path, roi_file, outfile = None):
     outfile = '%s_dfbyf_avg_%s.dat' % (outfile or imagefile, len(imagefiles) )
     np.savetxt( outfile, dfbyfMean, delimiter=',' )
     print('[INFO] Writing dfbyf data to %s' % outfile)
-    cx = pylab.imshow( dfbyfMean, cmap = pylab.cm.hot, aspect = 'auto' )
+    cx = pylab.imshow( dfbyfMean, cmap = pylab.cm.hot, aspect = 'auto',
+            interpolation = 'none'
+            )
     pylab.colorbar( cx , orientation = 'horizontal' )
 
     pylab.title = 'df/f in ROIs'
