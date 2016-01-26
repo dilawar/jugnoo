@@ -35,9 +35,10 @@ def normalize( vec ):
 
 
 def substract_baseline( vec ):
-    # baseline = mean of first 5 frames.
-    vec = vec - vec[0:5].mean()
-    return normalize( vec )
+    baseline = np.median(vec[0:49])
+    if baseline > 0.0:
+        vec = (vec - baseline)/baseline
+    return vec # normalize( vec )
     
 def get_rois( roifile ):
     print('[INFO] Reading rois from %s' % roifile)
