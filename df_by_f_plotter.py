@@ -19,11 +19,26 @@ from image_analysis import frame_reader as fr
 import cv2
 import numpy as np
 import pylab
+import os
+import glob
 
-def get_baseline( vec ):
+def normalize( vec ):
+    # normalize to (0, 1)
+    a, b = vec.min(), vec.max()
+    if (b - a) == 0:
+        return np.zeros( len(vec) )
+    elif (b - a) / b < 1e-2:
+        print('[WARN] This roi does not show much activity. Ignoring')
+        return np.zeros( len(vec) )
+    scaled = (vec)/(b-a) - (a/(b-a))
+    return scaled
+
+
+def substract_baseline( vec ):
     # baseline = mean of first 5 frames.
-    return vec - vec[0:5].mean()
-
+    vec = vec - vec[0:5].mean()
+    return normalize( vec )
+    
 def get_rois( roifile ):
     print('[INFO] Reading rois from %s' % roifile)
     rois = np.genfromtxt(roifile, delimiter=',', comments='#', skip_header=True)
@@ -48,12 +63,44 @@ def compute_df_by_f( roi, frames ):
         #cv2.imshow( 'mask', img )
         dfbyf[i] =  img.mean() 
     #cv2.waitKey( 0 )
-    baseline = get_baseline( dfbyf )
-    return baseline 
+    dfbyf = substract_baseline( dfbyf )
+    return dfbyf
 
-def main( imagefile, roi_file, outfile = None):
+def main( input_path, roi_file, outfile = None):
     global img_
     rois = get_rois( roi_file )
+
+    # For this roi, there could be multiple files
+    if os.path.isdir( input_path ):
+        imagefiles = glob.glob( os.path.join( input_path, '*.tif') )
+        imagefiles += glob.glob( os.path.join( input_path, '*.tiff' ) )
+    else:
+        imagefiles = [ input_path ]
+
+    alldfbyfImg = []
+    for imagefile in imagefiles:
+        print('[INFO] Computing df/f for %s' % imagefile)
+        dfbyfImg = process_image_file( rois, imagefile, outfile)
+        alldfbyfImg.append( dfbyfImg )
+
+    dfbyfMean = np.mean(alldfbyfImg, axis=0)
+
+    outfile = '%s_dfbyf_avg_%s.dat' % (outfile or imagefile, len(imagefiles) )
+    np.savetxt( outfile, dfbyfMean, delimiter=',' )
+    print('[INFO] Writing dfbyf data to %s' % outfile)
+    cx = pylab.imshow( dfbyfMean, cmap = pylab.cm.hot, aspect = 'auto' )
+    pylab.colorbar( cx , orientation = 'horizontal' )
+
+    pylab.title = 'df/f in ROIs'
+    pylab.xlabel( '# frame ')
+    pylab.ylabel( '# roi ')
+    outfile = '%s_df_by_f_avg_%s.png' % ( outfile or imagefile, len(imagefiles))
+    pylab.savefig( outfile )
+    print('[INFO] Done saving datafile to %s ' % outfile)
+
+
+def process_image_file( rois, imagefile, outfile):
+
     frames = fr.read_frames( imagefile )
     img_ = np.zeros( frames[0].shape )
 
@@ -63,19 +110,7 @@ def main( imagefile, roi_file, outfile = None):
         vec = np.array(compute_df_by_f( roi, frames ))
         dfbyfImg[i,:] = vec
 
-    outfile = '%s_dfbyf.dat' % ( outfile or imagefile )
-    np.savetxt( outfile, dfbyfImg, delimiter=',' )
-    print('[INFO] Writing dfbyf data to %s' % outfile)
-    cx = pylab.imshow( dfbyfImg, cmap = pylab.cm.hot, aspect = 'auto' )
-    pylab.colorbar( cx , orientation = 'horizontal' )
-
-    pylab.title = 'df/f in ROIs'
-    pylab.xlabel( '# frame ')
-    pylab.ylabel( '# roi ')
-    outfile = '%s_df_by_f.png' % ( outfile or imagefile )
-    pylab.savefig( outfile )
-    print('[INFO] Done saving datafile to %s ' % outfile)
-
+    return dfbyfImg
 
 if __name__ == '__main__':
     import argparse
@@ -84,7 +119,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=description)
     parser.add_argument('--input', '-i'
         , required = True
-        , help = 'Input file (tiff/avi)'
+        , help = 'Input file or directory (tif file are supported.)'
         )
     parser.add_argument('--roifile', '-r'
         , required = True
