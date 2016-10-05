@@ -251,72 +251,38 @@ def get_roi_containing_minimum_cells( ):
     return rois 
 
 def process_input( ):
-    inputfile = e.args_.input
+    inputdir = e.args_.input
+    tiffs = []
+    for d, sd, fs in os.walk( inputdir ):
+        for f in fs:
+            if 'tiff' in f[-5:].lower() or 'tif' in f[-5:].lower():
+                tiffs.append( os.path.join(d, f) )
 
-    logger.info("Processing %s" % inputfile)
-    frames = imgr.read_frames( inputfile )
+    allFrames = []
+    for inputfile in tiffs[0:10]:
+        logger.info("Processing %s" % inputfile)
+        frames = imgr.read_frames( inputfile )
+        allFrames += frames 
+
+    template = np.zeros( shape = allFrames[0].shape )
+    frames = np.dstack( allFrames )
+    for i in range(frames.shape[2]):
+        f = frames[:,:,i]
+    for (r,c), val in np.ndenumerate( template ):
+        pixals = frames[r,c,:]
+        if pixals.var( ) > 200.0:
+                template[r,c] = pixals.mean( )
+
+    plt.subplot(2, 1, 1 )
+    plt.imshow( template )
+    plt.colorbar( )
+    plt.subplot(2, 1, 2 )
+    plt.imshow( np.sum( frames, axis = 2 ) )
+    plt.show( )
+
     
-    # get the summary of all activity
-    summary = np.zeros( shape = frames[0].shape )
-    for f in frames: summary += f
-    e.images_['summary'] = summary
-
-    get_rois( frames, window = config.n_frames)
-    logger.info("Got all interesting ROIs. TOTAL = %s" % len(e.rois_))
-
-    # Here we use the collected rois which are acceptable as cells and filter
-    # out overlapping contours
-    reallyCoolCells = get_roi_containing_minimum_cells( )
-    roifile = '%s_roi.csv' % inputfile
-    text = [ 'colum,row,radius' ]
-
-    boxes = []
-    for c in reallyCoolCells:
-        text.append( '%s,%s,%s' % ( 
-            int(c.center[0]), int(c.center[1]), int(c.radius))
-            )
-        boxes.append( c.rectangle )
-    with open( roifile, 'w' ) as f:
-        f.write( '\n'.join( text ) )
-    logger.info( "ROIs are written to %s " % roifile )
-
-def plot_results( ):
-    outfiles = []
-    stamp = datetime.datetime.now().isoformat()
-    txt = "%s" % e.args_.input.split('/')[-1]
-    txt += ' @ %s' % stamp
-    txt += ', 1 px = %s micro-meter' % e.args_.pixal_size
-
-    plt.figure()
-    gs = matplotlib.gridspec.GridSpec(2, 2)
-    ax = plt.subplot( gs[0,0] )
-    ax.imshow( e.images_['summary'], aspect='equal' )
-    ax.set_title( "Summary of activity in region", fontsize = 10 )
-
-    ax = plt.subplot( gs[0,1] )
-    ax.imshow(  e.images_['rois'] , aspect = 'equal'  )
-    ax.set_title( 'Computed ROIs', fontsize = 10 )
-
-    ax = plt.subplot( gs[1,0] )
-    ax.imshow( 0.99*e.images_['summary']+e.images_['bound_area'], aspect='equal')
-    ax.set_title( 'Clusters for df/F', fontsize = 10 )
-
-    ax = plt.subplot( gs[1,1] )
-    ax.imshow( e.images_['cool_rois'], aspect = 'equal' )
-    ax.set_title('Filtered ROIs', fontsize = 10)
-    plt.suptitle(txt , fontsize = 8)
-    outfiles.append('%s_0.%s' % tuple(e.args_.output.rsplit('.', 1 )))
-
-    if e.args_.debug:
-        plt.show( )
-    plt.savefig( outfiles[-1] )
-    logger.info('Saved results to %s' % outfiles)
-
-
 def main( ):
-    init( )
     process_input(  )
-    plot_results( )
 
 if __name__ == '__main__':
     import argparse
