@@ -22,6 +22,7 @@ SET(OPENCV_COMPONENTS
 	objdetect
 	ts
 	video
+        imgcodecs
 )
 
 FOREACH(COMPONENT ${OPENCV_COMPONENTS})

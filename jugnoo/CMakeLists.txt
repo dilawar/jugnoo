@@ -5,7 +5,7 @@ set( CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH}
     ${CMAKE_CURRENT_SOURCE_DIR}/cmake_modules 
     )
 
-find_package( OPENCV REQUIRED COMPONENTS core highgui )
+find_package( OPENCV REQUIRED COMPONENTS core highgui imgcodecs )
 find_package( TIFF REQUIRED )
 
 include_directories( ${CMAKE_CURRENT_SOURCE_DIR}/include )
