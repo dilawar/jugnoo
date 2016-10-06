@@ -5,7 +5,7 @@ set( CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH}
     ${CMAKE_CURRENT_SOURCE_DIR}/cmake_modules 
     )
 
-find_package( OpenCV REQUIRED )
+find_package( OPENCV REQUIRED COMPONENTS core highgui )
 
 include_directories( ${CMAKE_CURRENT_SOURCE_DIR}/include )
 
@@ -13,4 +13,4 @@ include_directories( ${CMAKE_CURRENT_SOURCE_DIR}/include )
 
 add_executable(jugnoo src/main.cpp)
 
-target_link_libraries( jugnoo  ${OpenCV_LIBS} )
+target_link_libraries( jugnoo  ${OPENCV_LIBRARIES} )
