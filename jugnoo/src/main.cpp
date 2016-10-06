@@ -48,12 +48,14 @@ void get_timeseries_of_pixal(
 }
 
 void smooth( const vector< pixal_type_t > signal
-        , vector < pixal_type_t >& res 
-        , size_t window_size 
-        )
+        , vector < pixal_type_t >& res )
 {
 
-
+    res.resize( signal.size() );
+    res[0] = signal[0];
+    for (size_t i = 1; i < signal.size() - 1; i++) 
+        res[i] = (signal[i-1] + signal[i] + signal[i+1]) / 3.0;
+    res[ signal.size() - 1] =  signal.back();
 }
 
 void convolve( const vector< pixal_type_t > a, const vector< pixal_type_t > b
@@ -70,6 +72,13 @@ void convolve( const vector< pixal_type_t > a, const vector< pixal_type_t > b
 
 void correlate( const vector< pixal_type_t> a, const vector<pixal_type_t> b)
 {
+    vector< pixal_type_t > aa, ab;
+    convolve( a, b, ab );
+    convolve( a, a, aa );
+    size_t N = 5;
+    double aaSum = accumulate( aa.begin(), aa.begin() + N, 0); 
+    double abSum = accumulate( ab.begin(), ab.begin() + N, 0);
+    cout << abSum / aaSum << " ";
 }
 
 void compute_correlation( const vector< Mat >& frames )
@@ -96,10 +105,13 @@ void compute_correlation( const vector< Mat >& frames )
                 continue;
             count++;
             vector<pixal_type_t> pixalA, pixalB;
+            vector<pixal_type_t> a, b;
             get_timeseries_of_pixal( frames, i, pixalA);
             get_timeseries_of_pixal( frames, j, pixalB);
-            vector< pixal_type_t > convolution;
-            convolve( pixalA, pixalB, convolution);
+
+            smooth( pixalA, a);
+            smooth( pixalB, b);
+            correlate( a, b );
             //cout << "," << accumulate( convolution.begin(), convolution.end(), 0);
         }
     cout << "Total pixals " << count << endl;
