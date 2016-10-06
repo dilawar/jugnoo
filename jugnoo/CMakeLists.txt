@@ -1,14 +1,16 @@
-cmake_minimum_required(VERSION 2.6)
+cmake_minimum_required(VERSION 2.8)
 project(jugnoo)
 
-find_package( TIFF REQUIRED )
+set( CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH}
+    ${CMAKE_CURRENT_SOURCE_DIR}/cmake_modules 
+    )
+
+find_package( OpenCV REQUIRED )
 
 include_directories( ${CMAKE_CURRENT_SOURCE_DIR}/include )
-include_directories( ${TIFF_INCLUSE_DIR} )
 
 #add_subdirectory(src)
 
 add_executable(jugnoo src/main.cpp)
 
-target_link_libraries( jugnoo  ${TIFF_LIBRARIES} )
-
+target_link_libraries( jugnoo  ${OpenCV_LIBS} )
