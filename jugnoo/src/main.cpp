@@ -19,9 +19,11 @@
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <iostream>
+//#include <boost/git/gil_all.hpp>
 
 using namespace std;
 using namespace cv;
+//using namespace boost::gil;
 
 int main(int argc, char *argv[])
 {
@@ -31,8 +33,9 @@ int main(int argc, char *argv[])
         return -1;
     }
 
+#if 1
     Mat image;
-    image = imread(argv[1], CV_LOAD_IMAGE_COLOR);   // Read the file
+    image = imread(argv[1], CV_LOAD_IMAGE_GRAYSCALE );   // Read the file
 
     if(! image.data )                              // Check for invalid input
     {
@@ -44,5 +47,9 @@ int main(int argc, char *argv[])
     imshow( "Display window", image );                   // Show our image inside it.
 
     waitKey(0);                                        
+#else
+
+
+#endif 
     return 0;
 }
