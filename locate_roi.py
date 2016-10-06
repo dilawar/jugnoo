@@ -11,20 +11,13 @@ __status__           = "Development"
 
 import config 
 import numpy as np
-import matplotlib
 import matplotlib.pyplot as plt
 import scipy.signal as sig
-import scipy.stats as stat
 import os
 import sys
-import glob
-import datetime
+import time
 import cv2
-import helper
-from image_analysis import edge_detector 
-from image_analysis import contour_detector 
 import environment as e
-import roi
 import image_reader as imgr
 import networkx as nx
 
@@ -113,7 +106,9 @@ def process_input( ):
 
     
 def main( ):
+    t1 = time.time()
     process_input(  )
+    print( '[INFO] Total time taken %f seconds' % (time.time() - t1) )
 
 if __name__ == '__main__':
     import argparse
