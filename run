@@ -1,11 +1,6 @@
 #!/bin/bash
-set -x
-
-if [ ! -f $1 ]; then
-    echo "Usage: $0 tiff_file"
-    exit
-fi
-
-FILENAME=$1
-./locate_roi.py -i $FILENAME 
-./df_by_f_plotter.py -i $FILENAME -r ${FILENAME}_roi.csv
+cython -a ./activity.pyx
+gcc -shared -pthread -fPIC -fwrapv -O2 -Wall -fno-strict-aliasing  \
+    -I /usr/lib64/python2.7/site-packages/numpy/core/include/ \
+    -I/usr/include/python2.7 -o activity.so ./activity.c
+python main.py -i ./_tiff_data/test/
