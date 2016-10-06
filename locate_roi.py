@@ -26,231 +26,60 @@ from image_analysis import contour_detector
 import environment as e
 import roi
 import image_reader as imgr
+import networkx as nx
 
 import logging
 logger = logging.getLogger('')
 
-def init( ):
-    e.save_direc_ = os.path.join( '.', '_results_%s' %
-            os.path.split(e.args_.input)[1])
-    if os.path.isdir( e.save_direc_ ):
-        return
-        for f in glob.glob( '%s/*' % e.save_direc_ ):
-            os.remove(f)
-    else:
-        logging.info("Creating dir %s for saving data" % e.save_direc_)
-        os.makedirs( e.save_direc_ )
+g_ = nx.DiGraph( )
+indir_ = None
 
-def get_activity_vector( frames ):
-    """Given a list of frames, return the indices of frames where there is an
-    activity
-    """
-    meanActivity = [ x.mean() for x in frames ]
-    # Now get the indices where peak value occurs. 
-    activity = sig.argrelextrema( np.array(meanActivity), np.greater)[0]
-    # activity = activity[::3]
-    actFlie = os.path.join( e.save_direc_, 'activity_peak.csv')
-    logging.info("Writing activity to %s" % actFlie)
-    header = "frame index"
-    np.savetxt(actFlie, activity, delimiter=',', header=header)
-    logging.info("... Wrote!")
-    return activity
+def plot_two_pixals( a, b, window = 3 ):
+    plt.figure( )
+    smoothW = np.ones( window ) / window 
+    pixalA, pixalB = [ smooth( x ) for x in [a, b] ]
+    plt.subplot( 2, 1, 1 )
+    plt.plot( pixalA )
+    plt.plot( pixalB )
+    plt.subplot( 2, 1, 2 )
+    plt.plot( convolve( pixalA, pixalB ) )
+    plt.show( )
 
-def threshold_frame( frame, nstd = None):
-    # Change the parameter to one's liking. Currently low threshold value is 3
-    # std more than mean.
-    mean = int(frame.mean())
-    std = int(frame.std())
-    if nstd is None:
-        nstd = 3
-    low = max(0, mean + (nstd * std))
-    high = int( frame.max() )
-    logging.debug("Thresholding at %s + %s * %s" % (mean, nstd, std))
-    logging.debug("|-  low, high = %s, %s" % (low, high))
-    frame = stat.threshold( frame, low, high, newval = 0)
-    return imgr.to_grayscale( frame )
+def smooth( a, window = 3 ):
+    window = np.ones( window ) / window 
+    return np.convolve( a, window , 'same' )
 
-def save_image( filename, img, **kwargs):
-    """Store a given image to filename """
-    if e.args_.debug:
-        img = imgr.to_grayscale( img )
-        outfile = os.path.join( e.save_direc_, filename )
-        logging.info( 'Saving image to %s ' % outfile )
-        cv2.imwrite( outfile , img )
-        return img
+def convolve( a, b ):
+    # full = sig.correlate( a, b, mode = 'full' )
+    full = sig.fftconvolve( a, b, mode = 'full' )
+    return full[len(full)/2:]
 
-def write_ellipses( ellipses ):
-    outfile = os.path.join( e.save_direc_, 'bounding_ellipses.csv' )
-    with open( outfile, 'w' ) as f:
-        f.write("x,y,major,minor,rotation\n")
-        for e in ellipses:
-            (y, x), (minor, major), angle = e
-            f.write('%s,%s,%s,%s,%s\n' % (x, y, major, minor, angle))
-    logging.info("Done writing ellipses to %s" % outfile )
+def activity_corr( a, b ):
+    N = 10
+    self = convolve( a, a )[0:N]
+    ab = convolve( a, b )[0:N]
+    return np.sum( self / ab ) / N
 
-def get_rois( frames, window):
-    # Compute the region of interest.
-    e.shape_ = frames[0].shape
-    activityVec = get_activity_vector( frames )
-    e.images_['activity'] = np.array( activityVec )
-
-    # activityVec contains the indices where we see a local maxima of mean
-    # activity e.g. most likely here we have a activity at its peak. Now we
-    # collect few frames before and after it and do the rest.
-    # logger.debug("Activity vector: %s" % activityVec )
-    allEdges = np.zeros( e.shape_ )
-    roi = np.zeros( e.shape_ ) 
-    for i in activityVec:
-        low = max(0, i-window)
-        high = min( e.shape_[0], i+window)
-        bundle = frames[low:high]
-        sumAll = np.zeros( e.shape_ )
-        for f in bundle:
-            ff = threshold_frame( f, nstd = 2)
-            sumAll += ff
-        sumAll = imgr.to_grayscale( sumAll )
-        edges = edge_detector.all_edges( sumAll )
-        merge_image = np.concatenate( (sumAll, edges), axis=0)
-        save_image( 'edges_%s.png' % i, merge_image)
-        #  Also creates a list of acceptable cells in each frame.
-        cellImg = compute_cells( edges )
-        save_image( 'cell_%s.png' % i, cellImg )
-        roi += cellImg
-        allEdges += edges 
-
-    e.images_['all_edges'] = allEdges
-    e.images_['rois'] = imgr.to_grayscale(roi)
-
-    save_image( 'all_edges.png', allEdges, title = 'All edges')
-    save_image( 'rois.png', roi )
-
-    #  Use this to locate the clusters of cell in all frames. 
-    cnts, cntImgs = find_contours( imgr.to_grayscale(roi), draw = True, fill = True)
-    e.images_['bound_area'] = edge_detector.all_edges( cntImgs )
-    logger.info("Done processing all the contours. Computed the bounded areas")
-
-def find_contours( img, **kwargs ):
-    logger.debug("find_contours with option: %s" % kwargs)
-    contours = contour_detector.contours( img )
-    if kwargs.get('hull', True):
-        logger.debug("Approximating contours with hull")
-        contours = [ cv2.convexHull( x ) for x in contours ]
-
-    if kwargs.get('filter', 0):
-        contours = filter(lambda x:len(x) >= kwargs['filter'], contours)
-
-    contourImg = None
-    if kwargs.get('draw', False):
-        contourImg = np.zeros( img.shape, dtype=np.uint8 )
-        cv2.drawContours( contourImg, contours, -1, 255, 1)
-
-    if kwargs.get('fill', False):
-        for c in contours:
-            cv2.fillConvexPoly( contourImg, c, 255 )
-    return contours, contourImg
-
-def acceptable( contour ):
-    """Various conditions under which a contour is not a cell """
-    # First fit it with an ellipse
-    r = roi.ROI( contour )
-    # If area of contour is too low, reject it.
-    diam = 2.0 * r.radius
-    if diam < config.min_roi_diameter or diam > config.max_roi_diameter:
-        logger.debug( "Rejected ROI. Diameter is low or high (%s)" % diam)
-        return False
-
-    # If the lower axis is 0.7 or more times of major axis, then aceept it.
-    if r.eccentricity < 0.7:
-        msg = "Contour %s is rejected because " % contour
-        msg += "axis ration (%s) of cell is too skewed" % r.eccentricity
-        logger.debug( msg )
-        return False
-
-    e.rois_.append( r )
-    return True
-
-def compute_cells( image ):
-    thresholdImg = threshold_frame( image, nstd = 3 )
-    contourThres = config.min_points_in_contours
-    contours, contourImg = find_contours(thresholdImg
-            , draw = True
-            , filter = contourThres
-            , hull = True
-            )
-
-    img = np.zeros( contourImg.shape, dtype = np.uint8 )
-    for c in contours:
-        if acceptable( c ):
-            cv2.fillConvexPoly( img, c, 255)
-
-    # Now fetch the contours from this image. 
-    contours, contourImg = find_contours( img, draw = True, hull = True )
-    return contourImg
-
-def df_by_f( roi, frames, roi_index = None ):
-    msg = 'ROI %s' % str(roi)
-    if roi_index is not None:
-        msg = ('%s : ' % roi_index) + msg
-    logger.info( msg )
-
-    yvec = []
-    for f in frames:
-        col, row, w, h = roi
-        area = f[row:row+h,col:col+w]
-        yvec.append( area.mean() )
-
-    yvec = np.array(yvec, dtype=np.float)
-    df = yvec - yvec.min()
-    return np.divide(100 * df, yvec) 
-
-def df_by_f_data( rois, frames ):
-
-    dfmat = np.zeros( shape = ( len(rois), len(frames) ))
-    for i, r in enumerate(rois):
-        vec = df_by_f( r, frames, i )
-        dfmat[i,:] = vec
-    
-    outfile = '%s/df_by_f.dat' % e.save_direc_
-    comment = 'Each column represents a ROI'
-    comment += "\ni'th row is the values of ROIs in image senquence i"
-    np.savetxt(outfile, dfmat.T, delimiter=',', header = comment)
-    save_image( 'df_by_f.png', dfmat)
-    logger.info('Wrote df/f data to %s' % outfile)
-    return dfmat
-
-def merge_or_reject_cells( cells ):
-    restult = []
-    coolcells, areas = [], []
-
-    # sort according to area
-    cells = sorted( cells, key = lambda x: x.area )
-
-    # Now remove all those cells which are inside another cells. They should be
-    # close enough in size.
-    logger.info("Removing overlapping cells")
-    cells = helper.remove_contained_cells( cells )
-    logger.info("== Done removing overlapping cells")
-
-    logger.info("Removing duplicate ROIs")
-    cells = helper.remove_duplicates( cells )
-    logger.info("== Done removing duplicated")
-    return cells
-
-def get_roi_containing_minimum_cells( ):
-    roiImg = np.zeros( shape = e.shape_ )
-    # Now we need reject some of these rectangles.
-    logger.info("Merging or rejecting ROIs to find suitable cells")
-    rois = merge_or_reject_cells( e.rois_  )
-    logger.info("Done merging or rejecting ROIs. Total %s" % len(rois))
-
-    # create an image of these rois.
-    for c in rois:
-        center, radius = c.center, int(c.radius)
-        cv2.circle( roiImg, ( int(center[0]), int(center[1])), radius, 255, 1)
-    e.images_['cool_rois'] = roiImg
-    return rois 
+def build_correlation_graph( graph, frames ):
+    for i, m in enumerate(graph.nodes( )):
+        logger.info( 'Done nodes %d (out of %d)' % (i, graph.number_of_nodes() ) )
+        for n in graph.nodes( ):
+            if m == n: 
+                continue 
+            (m1, m2), (n1, n2) = m, n
+            pixalsM, pixalsN = frames[m1,m2,:], frames[n1,n2,:]
+            # plot_two_pixals( pixalsM, pixalsN )
+            corr = activity_corr( pixalsM, pixalsN )
+            graph.add_edge( m, n, weight=corr )
+            logger.debug( 'Computed activity corr between %s and %s = %s' % (m,
+                n, corr) )
+    logger.info( 'Done building graph. Now extract communities' )
+    outfile = os.path.join( e.args_.input, 'activity_correlation.gml' )
+    nx.write_gml( graph, outfile )
+    print( '[INFO] Wrote graph to %s' % outfile )
 
 def process_input( ):
+    global g_
     inputdir = e.args_.input
     tiffs = []
     for d, sd, fs in os.walk( inputdir ):
@@ -259,7 +88,7 @@ def process_input( ):
                 tiffs.append( os.path.join(d, f) )
 
     allFrames = []
-    for inputfile in tiffs[0:10]:
+    for inputfile in tiffs:
         logger.info("Processing %s" % inputfile)
         frames = imgr.read_frames( inputfile )
         allFrames += frames 
@@ -272,7 +101,9 @@ def process_input( ):
         pixals = frames[r,c,:]
         if pixals.var( ) > 200.0:
                 template[r,c] = pixals.mean( )
+                g_.add_node( (r,c) )
 
+    build_correlation_graph( g_, frames )
     plt.subplot(2, 1, 1 )
     plt.imshow( template )
     plt.colorbar( )
