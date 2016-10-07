@@ -5,16 +5,22 @@ set( CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH}
     ${CMAKE_CURRENT_SOURCE_DIR}/cmake_modules 
     )
 
-find_package( OPENCV REQUIRED COMPONENTS core highgui imgcodecs )
+add_definitions( -std=c++11 -Wall )
+
+set(CMAKE_BUILD_TYPE Release )
+
+#find_package( OPENCV REQUIRED COMPONENTS core highgui imgcodecs )
 find_package( TIFF REQUIRED )
+find_package( GSL REQUIRED )
 
 include_directories( ${CMAKE_CURRENT_SOURCE_DIR}/include )
 
-#add_subdirectory(src)
+add_subdirectory( core )
 
-add_executable(jugnoo src/main.cpp)
+add_executable(jugnoo main.cpp)
 
 target_link_libraries( jugnoo  
+    core 
     ${TIFF_LIBRARIES}
-    ${OPENCV_LIBRARIES} 
+    ${GSL_LIBRARIES}
     )
