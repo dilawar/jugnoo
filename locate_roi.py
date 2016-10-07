@@ -19,12 +19,12 @@ import time
 import cv2
 import environment as e
 import image_reader as imgr
-import networkx as nx
+import igraph as ig
 
 import logging
 logger = logging.getLogger('')
 
-g_ = nx.DiGraph( )
+g_ = ig.Graph( )
 indir_ = None
 
 def plot_two_pixals( a, b, window = 3 ):
@@ -43,8 +43,8 @@ def smooth( a, window = 3 ):
     return np.convolve( a, window , 'same' )
 
 def convolve( a, b ):
-    # full = sig.correlate( a, b, mode = 'full' )
-    full = sig.fftconvolve( a, b, mode = 'full' )
+    """ Just convolve begining of the signal """
+    full = sig.convolve( a[:20], b[:20], mode = 'full' )
     return full[len(full)/2:]
 
 def activity_corr( a, b ):
@@ -54,9 +54,9 @@ def activity_corr( a, b ):
     return np.sum( self / ab ) / N
 
 def build_correlation_graph( graph, frames ):
-    for i, m in enumerate(graph.nodes( )):
+    for i, m in enumerate(graph.vs( )):
         logger.info( 'Done nodes %d (out of %d)' % (i, graph.number_of_nodes() ) )
-        for n in graph.nodes( ):
+        for n in graph.vs( ):
             if m == n: 
                 continue 
             (m1, m2), (n1, n2) = m, n
@@ -68,7 +68,7 @@ def build_correlation_graph( graph, frames ):
                 n, corr) )
     logger.info( 'Done building graph. Now extract communities' )
     outfile = os.path.join( e.args_.input, 'activity_correlation.gml' )
-    nx.write_gml( graph, outfile )
+    ig.write( graph, outfile, format = 'graphml' )
     print( '[INFO] Wrote graph to %s' % outfile )
 
 def process_input( ):
@@ -94,7 +94,7 @@ def process_input( ):
         pixals = frames[r,c,:]
         if pixals.var( ) > 200.0:
                 template[r,c] = pixals.mean( )
-                g_.add_node( (r,c) )
+                g_.add_vertex( name=str((r,c)) )
 
     build_correlation_graph( g_, frames )
     plt.subplot(2, 1, 1 )
