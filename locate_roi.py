@@ -54,18 +54,21 @@ def activity_corr( a, b ):
     return np.sum( self / ab ) / N
 
 def build_correlation_graph( graph, frames ):
+    logger.info( 'Total pixals %d' % ( graph.vcount() ** 2 ))
     for i, m in enumerate(graph.vs( )):
-        logger.info( 'Done nodes %d (out of %d)' % (i, graph.number_of_nodes() ) )
+        logger.info( 'Done nodes %d (out of %d)' % (i, graph.vcount() ) )
         for n in graph.vs( ):
+            mname, nname = m['name'], n['name']
             if m == n: 
                 continue 
-            (m1, m2), (n1, n2) = m, n
+            (m1, m2), (n1, n2) = eval(mname), eval(nname)
             pixalsM, pixalsN = frames[m1,m2,:], frames[n1,n2,:]
             # plot_two_pixals( pixalsM, pixalsN )
             corr = activity_corr( pixalsM, pixalsN )
             graph.add_edge( m, n, weight=corr )
-            logger.debug( 'Computed activity corr between %s and %s = %s' % (m,
-                n, corr) )
+            logger.debug( 'Computed corr between %s and %s = %s' % ( 
+                mname, nname, corr) 
+                )
     logger.info( 'Done building graph. Now extract communities' )
     outfile = os.path.join( e.args_.input, 'activity_correlation.gml' )
     ig.write( graph, outfile, format = 'graphml' )
@@ -92,9 +95,9 @@ def process_input( ):
         f = frames[:,:,i]
     for (r,c), val in np.ndenumerate( template ):
         pixals = frames[r,c,:]
-        if pixals.var( ) > 200.0:
-                template[r,c] = pixals.mean( )
-                g_.add_vertex( name=str((r,c)) )
+        if pixals.var( ) > 300.0:
+            template[r,c] = pixals.mean( )
+            g_.add_vertex( name=str((r,c)) )
 
     build_correlation_graph( g_, frames )
     plt.subplot(2, 1, 1 )
@@ -102,7 +105,8 @@ def process_input( ):
     plt.colorbar( )
     plt.subplot(2, 1, 2 )
     plt.imshow( np.sum( frames, axis = 2 ) )
-    plt.show( )
+    plt.savefig( "template.png" )
+    print( 'Saved to template.png' )
 
     
 def main( ):
