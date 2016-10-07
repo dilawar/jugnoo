@@ -131,12 +131,11 @@ double correlate( const vector<T>& first, const vector<T>& second)
     for_each( first.begin(), first.end(), [&](T v) { a.push_back( v / maxA ); });
     for_each( second.begin(), second.end(), [&](T v) { b.push_back( v / maxB ); });
 
-    vector< T > aa, ab;
-    convolve( a, b, ab );
-    convolve( a, a, aa );
-    double aaSum = accumulate( aa.begin(), aa.end(), 0); 
-    double abSum = accumulate( ab.begin(), ab.end(), 0);
-    return abSum / aaSum;
+    double err = 0.0;
+    for (size_t i = 0; i < a.size(); i++) 
+        err += fabs( a[i] - b[i] ) / a[i];
+
+    return err / first.size( );
 }
 
 template<typename T = double >
