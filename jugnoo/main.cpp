@@ -17,9 +17,8 @@
  */
 
 #include "global.h"
-#include "tiffio.h"
-#include "core/methods.h"
 #include <gsl/gsl_matrix.h>
+#include "core/methods.h"
 
 using namespace std;
 
@@ -67,15 +66,14 @@ int main(int argc, char *argv[])
             gsl_matrix* image = gsl_matrix_alloc( h, w );
             gsl_matrix_set_all( image, 0.0 );
 
+            pixal_type_t* row =  new pixal_type_t[ w ];
             for (size_t i = 0; i < h; i++) 
             {
-                pixal_type_t* row =  new pixal_type_t[ w ];
                 TIFFReadScanline( tif, row, i, 0 );
                 for (size_t ii = 0; ii < w; ii++) 
                     gsl_matrix_set( image, i, ii, row[ii] );
-                delete row;
             }
-
+            delete row;
             frames.push_back( image );
 
 	} while (TIFFReadDirectory(tif));

@@ -26,6 +26,8 @@
 #include <iostream>
 #include <map>
 #include <numeric>
+#include <algorithm>
+#include <fstream>
 
 using namespace std;
 
@@ -133,17 +135,33 @@ double correlate( const vector<T>& a, const vector<T>& b)
 template<typename T = double >
 bool is_active_timeseries( const vector<T>& data )
 {
-    cout << data << endl;
+    //cout << data << endl;
     // If mean and std deviation is smaller then there is not much actvity here.
-    double sum = accumulate( data.begin(), data.end(), 0.0 );
-    double mean = sum / data.size( );
+    T min = 100000.0, max = 0.0, sum = 0.0, mean = 0.0;
+    vector<T> normalized( data.size(), 0.0 );
+    for( auto v : data )
+    {
+        sum += v;
+        if( v < min )
+            min = v;
+        if( v > max )
+            max = v;
+    }
+
+    mean = sum / data.size( );
     double accum = 0.0;
     std::for_each ( std::begin(data), std::end(data)
-            , [&](const double d) { accum += (d - mean) * (d - mean); }
+            , [mean,&accum](const double d) { accum += (d-mean) * (d-mean); }
             );
-    double stdev = sqrt(accum / (data.size()-1));
-    cout << "Mean : " << mean << " std " << stdev << endl;
-    return true;
+    double stdev = sqrt( accum / (data.size()-1));
+    double cv = stdev / mean;
+#if 0
+    cout << stdev << " " << mean;
+    cout << "cv: " << cv << endl;
+#endif
+    if( cv > 0.14 )
+        return true;
+    return false;
 }
 
 template<typename T = double >
@@ -155,8 +173,7 @@ void get_timeseries_of_pixal(
 {
     for ( matrix_type_t image : frames )
     {
-        //auto val = image.at<pixal_type_t>( get<0>(index), get<1>(index) );
-        auto val = gsl_matrix_get( image, get<0>(index), get<1>(index) );
+        auto val = gsl_matrix_get( image, index.first, index.second );
         values.push_back( val );
     }
 }
@@ -165,8 +182,8 @@ void get_timeseries_of_pixal(
 void compute_correlation( const vector< matrix_type_t >& frames )
 {
     auto frame0 = frames[0];
-    size_t rows, cols;
-    cols = frame0->size1; rows = frame0->size2;
+    size_t rows = frame0->size1;
+    size_t cols = frame0->size2;
 
     std::cout << "Rows " << rows << " cols : " << cols << std::endl;
 
@@ -179,7 +196,7 @@ void compute_correlation( const vector< matrix_type_t >& frames )
     for( int i = 0; i < rows; i++)
         for( int ii = 0; ii < cols; ii++ )
         {
-            auto index = make_tuple( i, ii );
+            auto index = make_pair( i, ii );
             indices.push_back( index );
             vector<double> pixal;
             get_timeseries_of_pixal( frames, index, pixal );
@@ -187,13 +204,17 @@ void compute_correlation( const vector< matrix_type_t >& frames )
                 pixalMap[index] = pixal;
         }
 
-    std::cout << "Total pixals " << indices.size() << endl;
-    return;
-
+    std::cout << "Total pixals to process " << pixalMap.size() << endl;
     long count = 0;
 
     std::chrono::time_point< std::chrono::system_clock> start, t;
     std::chrono::duration<double> duration;
+
+    ofstream file;
+    string datafile("data_correlation.csv");
+    file.open( datafile );
+    file << "row1,col1,row2,col2,corr" << endl;
+    file.close();
 
     start = std::chrono::system_clock::now();
     for (size_t i = 0; i < indices.size(); i++) 
@@ -209,8 +230,17 @@ void compute_correlation( const vector< matrix_type_t >& frames )
             smooth( pixalMap[ indices[i] ], 3, a);
             smooth( pixalMap[ indices[j] ], 3, b);
             double corr = correlate( a, b );
-            //cout << "," << accumulate( convolution.begin(), convolution.end(), 0);
+            size_t row1, row2, col1, col2;
+
+            // Write them to file.
+            row1 = indices[i].first; col1 = indices[i].second;
+            row2 = indices[ii].first; col2 = indices[ii].second;
+            file.open( datafile, ios::app );
+            file << row1 << "," << col1 << "," << row2 << "," << col2 << endl; 
+            file.close( )
         }
     }
+
+    cout << "Wrote data to " << datafile << endl;
 }
 #endif   /* ----- #ifndef methods_INC  ----- */

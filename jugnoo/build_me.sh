@@ -21,4 +21,4 @@ set -e
 set -o nounset                              # Treat unset variables as an error
 cmake .
 make 
-time ./jugnoo  ~/Work/OTHERS/Suite2P/g5_136/test/Trial1-ROI-1.tif
+time ./jugnoo ~/Work/OTHERS/Suite2P/g5_136/2016-06-14/1/Trial100-ROI-1.tif
