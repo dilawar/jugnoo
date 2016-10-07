@@ -121,14 +121,21 @@ void smooth( const vector< T >& signal, const size_t N, vector < T >& res )
 
 
 template< typename T = double >
-double correlate( const vector<T>& a, const vector<T>& b)
+double correlate( const vector<T>& first, const vector<T>& second)
 {
+    // Normalize both a and b first.
+    double maxA = * max_element( first.begin(), first.end() );
+    double maxB = * max_element( second.begin(), second.end() );
+
+    vector<T> a, b;
+    for_each( first.begin(), first.end(), [&](T v) { a.push_back( v / maxA ); });
+    for_each( second.begin(), second.end(), [&](T v) { b.push_back( v / maxB ); });
+
     vector< T > aa, ab;
     convolve( a, b, ab );
     convolve( a, a, aa );
-    size_t N = 5;
-    double aaSum = accumulate( aa.begin(), aa.begin() + N, 0); 
-    double abSum = accumulate( ab.begin(), ab.begin() + N, 0);
+    double aaSum = accumulate( aa.begin(), aa.end(), 0); 
+    double abSum = accumulate( ab.begin(), ab.end(), 0);
     return abSum / aaSum;
 }
 
@@ -159,7 +166,7 @@ bool is_active_timeseries( const vector<T>& data )
     cout << stdev << " " << mean;
     cout << "cv: " << cv << endl;
 #endif
-    if( cv > 0.14 )
+    if( cv > 0.15 )
         return true;
     return false;
 }
@@ -197,11 +204,13 @@ void compute_correlation( const vector< matrix_type_t >& frames )
         for( int ii = 0; ii < cols; ii++ )
         {
             auto index = make_pair( i, ii );
-            indices.push_back( index );
             vector<double> pixal;
             get_timeseries_of_pixal( frames, index, pixal );
             if( is_active_timeseries( pixal ) )
+            {
+                indices.push_back( index );
                 pixalMap[index] = pixal;
+            }
         }
 
     std::cout << "Total pixals to process " << pixalMap.size() << endl;
@@ -217,26 +226,27 @@ void compute_correlation( const vector< matrix_type_t >& frames )
     file.close();
 
     start = std::chrono::system_clock::now();
-    for (size_t i = 0; i < indices.size(); i++) 
+    for (size_t i = 0; i < pixalMap.size(); i++) 
     {
         t = std::chrono::system_clock::now();
         duration = t - start;
         printf( "| %.3f%% (out of %d) completed. Elapsed time %f \n"
-                , (100.0 * i) / indices.size(), indices.size(), duration.count() );
-        for (size_t j = i; j < indices.size(); j++) 
+                , (100.0 * i) / pixalMap.size(), pixalMap.size(), duration.count() );
+        for (size_t j = i; j < pixalMap.size(); j++) 
         {
             count++;
             vector<double> a, b;
             smooth( pixalMap[ indices[i] ], 3, a);
             smooth( pixalMap[ indices[j] ], 3, b);
             double corr = correlate( a, b );
-            size_t row1, row2, col1, col2;
 
-            // Write them to file.
+            // Write it to file.
+            size_t row1, row2, col1, col2;
             row1 = indices[i].first; col1 = indices[i].second;
             row2 = indices[j].first; col2 = indices[j].second;
             file.open( datafile, ios::app );
-            file << row1 << "," << col1 << "," << row2 << "," << col2 << endl; 
+            file << row1 << "," << col1 << "," << row2 << "," << col2 
+                <<  "," << corr << endl; 
             file.close( );
         }
     }
