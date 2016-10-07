@@ -191,7 +191,7 @@ void compute_correlation( const vector< matrix_type_t >& frames )
 
     // create the list of indices, I need to iterate over. And also collect the
     // time-series of pixals.
-    vector< tuple<size_t, size_t> > indices;
+    vector< pair<size_t, size_t> > indices;
     map< tuple<size_t, size_t>, vector<double> > pixalMap;
     for( int i = 0; i < rows; i++)
         for( int ii = 0; ii < cols; ii++ )
@@ -234,10 +234,10 @@ void compute_correlation( const vector< matrix_type_t >& frames )
 
             // Write them to file.
             row1 = indices[i].first; col1 = indices[i].second;
-            row2 = indices[ii].first; col2 = indices[ii].second;
+            row2 = indices[j].first; col2 = indices[j].second;
             file.open( datafile, ios::app );
             file << row1 << "," << col1 << "," << row2 << "," << col2 << endl; 
-            file.close( )
+            file.close( );
         }
     }
 
