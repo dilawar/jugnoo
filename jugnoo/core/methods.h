@@ -219,9 +219,9 @@ void compute_correlation( const vector< matrix_type_t >& frames )
     std::chrono::duration<double> duration;
 
     ofstream file;
-    string datafile("data_correlation.csv");
+    string datafile("data_correlation.dot");
     file.open( datafile );
-    file << "row1,col1,row2,col2,corr" << endl;
+    file << "digraph corr { " << endl;
     file.close();
 
     start = std::chrono::system_clock::now();
@@ -244,11 +244,16 @@ void compute_correlation( const vector< matrix_type_t >& frames )
             row1 = indices[i].first; col1 = indices[i].second;
             row2 = indices[j].first; col2 = indices[j].second;
             file.open( datafile, ios::app );
-            file << row1 << "," << col1 << "," << row2 << "," << col2 
-                <<  "," << corr << endl; 
+            file << "\t \"(" << row1 << "," << col1 << ")\" -> " 
+                << "\"(" << row2 << "," << col2  << ")\" " 
+                <<  "[weight=" << corr << "];" << endl; 
             file.close( );
         }
     }
+
+    file.open( datafile, ios::app );
+    file << "}" << endl;
+    file.close( );
 
     cout << "Wrote data to " << datafile << endl;
 }

@@ -16,20 +16,25 @@ __status__           = "Development"
 import sys
 import os
 import matplotlib.pyplot as plt
-import networkx as nx
+import igraph as ig
 import numpy as np
-import graph_tool as gt
 import pandas
 
 def main():
     """docstring for main"""
-    g = nx.Graph( )
+    g = ig.Graph( )
     data = pandas.read_csv( './data_correlation.csv' )
     r1s, c1s, r2s, c2s = data['row1'], data['col1'], data['row2'], data['col2']
     corrs = data['corr']
-    N = r1s.max() * c1s.max( )
-    img = np.zeros( shape=(N,N) )
-    
+    # N = r1s.max() * c1s.max( )
+    # img = np.zeros( shape=(N,N) )
+    for i, r in enumerate( r1s ):
+        if i % 10000 == 0:
+            print(i, len(r1s) )
+        a, b = (c1s[i], r1s[i]), ( r2s[i], c2s[i]) 
+        n1 = g.add_vertex( a )
+        n2 = g.add_vertex( b )
+        g.add_edge(n1, n2, weight = corrs[i] )
 
 if __name__ == '__main__':
     main()
