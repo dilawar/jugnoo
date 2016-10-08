@@ -9,7 +9,6 @@ __maintainer__       = "Dilawar Singh"
 __email__            = "dilawars@ncbs.res.in"
 __status__           = "Development"
 
-import config 
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy.signal as sig
@@ -17,7 +16,6 @@ import os
 import sys
 import time
 import cv2
-import environment as e
 import image_reader as imgr
 import igraph as ig
 
@@ -121,7 +119,7 @@ if __name__ == '__main__':
 
     parser.add_argument('--input', '-i'
         , required = True
-        , help = 'Input file'
+        , help = 'Input dir'
         )
     parser.add_argument('--output', '-o'
         , required = False
