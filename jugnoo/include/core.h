@@ -247,6 +247,10 @@ void compute_correlation( const vector< matrix_type_t >& frames )
 
         for( auto p2 : pixalMap )
         {
+            // Don't do self-correlation.
+            if( p1.first == p2.first )
+                continue;
+
             vector<double> a, b;
             smooth( p1.second, 5, a);
             smooth( p2.second, 5, b);
