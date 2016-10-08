@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 
 """process_data.py: 
 
@@ -16,13 +16,12 @@ __status__           = "Development"
 import sys
 import os
 import matplotlib.pyplot as plt
-import graph_tool as gt
-import graph_tool.draw as gd
+import igraph as ig
 
 def main():
     """docstring for main"""
-    graph = gt.load_graph( sys.argv[1] )
-    gd.graphviz_draw( graph )
+    g = ig.load( sys.argv[1] )
+    print( g)
 
 if __name__ == '__main__':
     main()

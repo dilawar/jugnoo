@@ -224,7 +224,7 @@ void compute_correlation( const vector< matrix_type_t >& frames )
                 pixalMap[index] = pixal;
                 // Write this node to graphviz, fix its position.
                 WRITE_LINE( datafile
-                        , "(" << index.first << "," << index.second << ")" 
+                        , "\t\"(" << index.first << "," << index.second << ")\"" 
                         << " [pos=\"" << index.first << "," << index.second 
                         << "\"];" );
 
