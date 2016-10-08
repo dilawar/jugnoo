@@ -197,21 +197,22 @@ void compute_correlation( const vector< matrix_type_t >& frames )
     size_t rows = frame0->size1;
     size_t cols = frame0->size2;
 
-    // Write data to a graphviz format.
+    // Write data to a csv format.
     ofstream file;
-    string datafile("data_correlation.dot");
+    string datafile("data_correlations.graph");
     file.open( datafile );
-    file << "digraph corr { " << endl;
     file.close();
 
     std::cout << "Rows " << rows << " cols : " << cols << std::endl;
-
     vector< vector< double > > time_series;
 
     // create the list of indices, I need to iterate over. And also collect the
     // time-series of pixals.
-    vector< pair<size_t, size_t> > indices;
-    map< tuple<size_t, size_t>, vector<double> > pixalMap;
+    map< size_t, pair<size_t, size_t> > nodePosMap;
+    map< size_t, double > nodeWeightMap;
+    map< size_t, vector<double> > pixalMap;
+
+    size_t currentNode = 0;
     for( int i = 0; i < rows; i++)
         for( int ii = 0; ii < cols; ii++ )
         {
@@ -220,53 +221,41 @@ void compute_correlation( const vector< matrix_type_t >& frames )
             get_timeseries_of_pixal( frames, index, pixal );
             if( is_active_timeseries( pixal ) )
             {
-                indices.push_back( index );
-                pixalMap[index] = pixal;
+                currentNode += 1;
+                pixalMap[currentNode] = pixal;
+                nodePosMap[ currentNode ] = index;
                 // Write this node to graphviz, fix its position.
                 WRITE_LINE( datafile
-                        , "\t\"(" << index.first << "," << index.second << ")\"" 
-                        << " [pos=\"" << index.first << "," << index.second 
-                        << "\"];" );
+                        , "N: " << currentNode << " "<< index.first << " " << index.second 
+                        );
 
             }
         }
 
     std::cout << "Total pixals to process " << pixalMap.size() << endl;
-    long count = 0;
 
     std::chrono::time_point< std::chrono::system_clock> start, t;
     std::chrono::duration<double> duration;
 
     start = std::chrono::system_clock::now();
-    for (size_t i = 0; i < pixalMap.size(); i++) 
+    for( auto p1 : pixalMap )
     {
         t = std::chrono::system_clock::now();
         duration = t - start;
         printf( "| %d (out of %d) completed. Elapsed time %.3f sec \n"
-                , i , pixalMap.size(), duration.count() );
-        for (size_t j = i; j < pixalMap.size(); j++) 
+                , p1.first , pixalMap.size(), duration.count() );
+
+        for( auto p2 : pixalMap )
         {
-            count++;
             vector<double> a, b;
-            smooth( pixalMap[ indices[i] ], 3, a);
-            smooth( pixalMap[ indices[j] ], 3, b);
+            smooth( p1.second, 5, a);
+            smooth( p2.second, 5, b);
             double corr = correlate( a, b );
 
-            // Write it to file.
-            size_t row1, row2, col1, col2;
-            row1 = indices[i].first; col1 = indices[i].second;
-            row2 = indices[j].first; col2 = indices[j].second;
             if( corr < 0.1 )
-                WRITE_LINE( datafile
-                        , "\t \"(" << row1 << "," << col1 << ")\" -> " 
-                        << "\"(" << row2 << "," << col2  << ")\" " 
-                        <<  "[weight=" << corr << "];" );
+                WRITE_LINE( datafile, "E:" << p1.first << " " << p2.first << " " << corr ); 
         }
     }
-
-    file.open( datafile, ios::app );
-    file << "}" << endl;
-    file.close( );
 
     cout << "Wrote data to " << datafile << endl;
 }

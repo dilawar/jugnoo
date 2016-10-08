@@ -15,12 +15,9 @@ find_package( GSL REQUIRED )
 
 include_directories( ${CMAKE_CURRENT_SOURCE_DIR}/include )
 
-add_subdirectory( core )
-
 add_executable(jugnoo main.cpp)
 
 target_link_libraries( jugnoo  
-    core 
     ${TIFF_LIBRARIES}
     ${GSL_LIBRARIES}
     )

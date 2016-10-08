@@ -22,22 +22,10 @@ import igraph as ig
 nodes_ = [ ]
 g_ = ig.Graph( )
 
-def add_node( nodename ):
-    nodeId = 0
-    if nodename not in nodes_:
-        nodes_.append( nodename )
-        nodeId = len( nodes_ )
-        g_.add_vertex( nodeId, label = nodename )
-        return nodeId
-    nodeId = nodes_.index( nodename )
-    return nodeId
-
-
 def build_graph( filename ):
     with open( filename, 'r' ) as f:
         lines = f.read().split( '\n' )
     edges = filter( lambda l : '->' in l, lines )
-    edgePat = re.compile( r'(?P<src>.+?)->(?P<tgt>.+?)\[(?P<attr>.*?)\]', re.DOTALL )
     for e in edges:
         m = edgePat.search( e )
         src, tgt = m.group( 'src' ), m.group( 'tgt' )

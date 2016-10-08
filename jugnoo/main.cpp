@@ -18,7 +18,7 @@
 
 #include "global.h"
 #include <gsl/gsl_matrix.h>
-#include "core/methods.h"
+#include "core.h"
 
 using namespace std;
 
