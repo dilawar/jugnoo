@@ -85,11 +85,14 @@ def build_cell_graph( graph, frames ):
         if graph.node[n].get('cell', None) is not None:
             continue
         graph.node[n]['cell'] = len(cells)
+        cell_.add_node( n , cv = c )
         cells.append( n )
         for m in graph.nodes( ):
+            # Definately not part of the cell.
             if distance(m, n ) > 20.0:
                 continue 
-            # Accept all pixals in neighbourhood 
+            # Accept all pixals in neighbourhood, for others check if they are
+            # connected at all.
             if distance(m, n) < 5.0 or is_connected(m, n, template_):
                 graph.node[m]['cell'] = len( cells )
 
@@ -100,8 +103,6 @@ def build_cell_graph( graph, frames ):
     plt.imshow( template_, interpolation = 'none', aspect = 'auto' )
     plt.colorbar( )
     plt.savefig( 'cells.png' )
-    print( img.shape )
-
 
 def build_correlation_graph( graph, frames ):
     logger.info( 'Total pixals %d' % ( graph.number_of_nodes() ** 2 ))
