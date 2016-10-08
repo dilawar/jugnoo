@@ -253,7 +253,7 @@ void compute_correlation( const vector< matrix_type_t >& frames )
             double corr = correlate( a, b );
 
             if( corr < 0.1 )
-                WRITE_LINE( datafile, "E:" << p1.first << " " << p2.first << " " << corr ); 
+                WRITE_LINE( datafile, "E: " << p1.first << " " << p2.first << " " << corr ); 
         }
     }
 
