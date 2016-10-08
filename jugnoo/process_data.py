@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 
 """process_data.py: 
 
@@ -16,25 +16,13 @@ __status__           = "Development"
 import sys
 import os
 import matplotlib.pyplot as plt
-import igraph as ig
-import numpy as np
-import pandas
+import graph_tool as gt
+import graph_tool.draw as gd
 
 def main():
     """docstring for main"""
-    g = ig.Graph( )
-    data = pandas.read_csv( './data_correlation.csv' )
-    r1s, c1s, r2s, c2s = data['row1'], data['col1'], data['row2'], data['col2']
-    corrs = data['corr']
-    # N = r1s.max() * c1s.max( )
-    # img = np.zeros( shape=(N,N) )
-    for i, r in enumerate( r1s ):
-        if i % 10000 == 0:
-            print(i, len(r1s) )
-        a, b = (c1s[i], r1s[i]), ( r2s[i], c2s[i]) 
-        n1 = g.add_vertex( a )
-        n2 = g.add_vertex( b )
-        g.add_edge(n1, n2, weight = corrs[i] )
+    graph = gt.load_graph( sys.argv[1] )
+    gd.graphviz_draw( graph )
 
 if __name__ == '__main__':
     main()

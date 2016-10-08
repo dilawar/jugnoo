@@ -29,6 +29,12 @@
 #include <algorithm>
 #include <fstream>
 
+#define WRITE_LINE(datafile, msg ) \
+                file.open( datafile, ios::app ); \
+                file << msg << endl; \
+                file.close( ); \
+    
+
 using namespace std;
 
 void get_timeseries_of_pixal( 
@@ -191,6 +197,13 @@ void compute_correlation( const vector< matrix_type_t >& frames )
     size_t rows = frame0->size1;
     size_t cols = frame0->size2;
 
+    // Write data to a graphviz format.
+    ofstream file;
+    string datafile("data_correlation.dot");
+    file.open( datafile );
+    file << "digraph corr { " << endl;
+    file.close();
+
     std::cout << "Rows " << rows << " cols : " << cols << std::endl;
 
     vector< vector< double > > time_series;
@@ -209,6 +222,12 @@ void compute_correlation( const vector< matrix_type_t >& frames )
             {
                 indices.push_back( index );
                 pixalMap[index] = pixal;
+                // Write this node to graphviz, fix its position.
+                WRITE_LINE( datafile
+                        , "(" << index.first << "," << index.second << ")" 
+                        << " [pos=\"" << index.first << "," << index.second 
+                        << "\"];" );
+
             }
         }
 
@@ -218,19 +237,13 @@ void compute_correlation( const vector< matrix_type_t >& frames )
     std::chrono::time_point< std::chrono::system_clock> start, t;
     std::chrono::duration<double> duration;
 
-    ofstream file;
-    string datafile("data_correlation.dot");
-    file.open( datafile );
-    file << "digraph corr { " << endl;
-    file.close();
-
     start = std::chrono::system_clock::now();
     for (size_t i = 0; i < pixalMap.size(); i++) 
     {
         t = std::chrono::system_clock::now();
         duration = t - start;
-        printf( "| %.3f%% (out of %d) completed. Elapsed time %f \n"
-                , (100.0 * i) / pixalMap.size(), pixalMap.size(), duration.count() );
+        printf( "| %d (out of %d) completed. Elapsed time %.3f sec \n"
+                , i , pixalMap.size(), duration.count() );
         for (size_t j = i; j < pixalMap.size(); j++) 
         {
             count++;
@@ -243,11 +256,11 @@ void compute_correlation( const vector< matrix_type_t >& frames )
             size_t row1, row2, col1, col2;
             row1 = indices[i].first; col1 = indices[i].second;
             row2 = indices[j].first; col2 = indices[j].second;
-            file.open( datafile, ios::app );
-            file << "\t \"(" << row1 << "," << col1 << ")\" -> " 
-                << "\"(" << row2 << "," << col2  << ")\" " 
-                <<  "[weight=" << corr << "];" << endl; 
-            file.close( );
+            if( corr < 0.1 )
+                WRITE_LINE( datafile
+                        , "\t \"(" << row1 << "," << col1 << ")\" -> " 
+                        << "\"(" << row2 << "," << col2  << ")\" " 
+                        <<  "[weight=" << corr << "];" );
         }
     }
 
