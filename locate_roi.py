@@ -138,26 +138,13 @@ def correlate_node_by_sync( cells ):
 
     syncImg = np.zeros( shape=template_.shape )
     syncDict = defaultdict( list )
-    # plt.figure()
-    # cliqueG = nx.make_clique_bipartite( cells )
-    # nx.draw( cliqueG )
-    # plt.savefig( 'clique_bipartite.png' )
-    # plt.close( )
-    # quit( )
     nx.drawing.nx_agraph.write_dot( cells, 'all_cell.dot' )
-    # for k in reversed(range(2, 100)):
-        # print k
-        # for i, c in enumerate( nx.k_clique_communities( cells, k ) ):
-            # print( 'Clique :%s' % c )
-            # for p in c:
-                # cv2.circle( syncImg, (p[1], p[0]), 2, 10*(i+1), 2 )
-                # syncDict[str(c)].append( cells.node[p]['timeseries'] )
     for i, c in enumerate( nx.attracting_components( cells ) ):
         if len(c) < 2:
             continue
-        logger.info( 'Found attracting component %s' % c )
+        logger.info( 'Found attracting component of length %d' % len(c) )
         for p in c:
-            cv2.circle( syncImg, (p[1], p[0]), 2, 10*(i+1), 2 )
+            cv2.circle( syncImg, (p[1], p[0]), 2, (i+1), 2 )
             syncDict[str(c)].append( cells.node[p]['timeseries'] )
 
     plt.subplot( 2, 2, 2 )
@@ -165,14 +152,8 @@ def correlate_node_by_sync( cells ):
             , interpolation = 'none', aspect = 'auto', cmap = 'seismic' )
     plt.colorbar(  ) #orientation = 'horizontal' )
     plt.title( 'Activity of each pixal' )
-    plt.subplot( 2, 2, 3 )
-    outdeg = cells.degree( )
-    toKeep = [ n for n in outdeg if outdeg[n] > 2 ]
-    g = cells.subgraph( toKeep )
 
-    # from networkx.drawing.nx_agraph import graphviz_layout
-    # pos = graphviz_layout( g , 'neato' )
-    # nx.draw_networkx( g, pos )
+    plt.subplot( 2, 2, 3 )
     plt.imshow( syncImg, interpolation = 'none', aspect = 'auto' )
     plt.colorbar( ) #orientation = 'horizontal' )
 
@@ -181,7 +162,8 @@ def correlate_node_by_sync( cells ):
     clusters = []
     for c in syncDict:
         clusters += syncDict[c]
-
+        # Append two empty lines to separate the clusters.
+        clusters += [ np.zeros( timeseries_.shape[1] ) ] 
     try:
         plt.imshow( np.vstack(clusters), interpolation = 'none', aspect = 'auto' )
         plt.colorbar(  ) #orientation = 'horizontal' )
