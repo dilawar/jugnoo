@@ -20,10 +20,10 @@ import time
 import cv2
 import image_reader as imgr
 import environment as e
-# import igraph as ig
 import networkx as nx
 import itertools
 from collections import defaultdict
+import gc
 
 import logging
 logger = logging.getLogger('')
@@ -138,14 +138,20 @@ def correlate_node_by_sync( cells ):
 
     syncImg = np.zeros( shape=template_.shape )
     syncDict = defaultdict( list )
-    nx.drawing.nx_agraph.write_dot( cells, 'all_cell.dot' )
+    nx.write_gpickle( cells, 'cells.gpickle' )
+    logger.info( 'Logging out after writing to graph.' )
+    return 
+    try:
+        nx.drawing.nx_agraph.write_dot( cells, 'all_cell.dot' )
+    except Exception as e:
+        logger.warn( 'Failed to write dot file %s' % e )
     for i, c in enumerate( nx.attracting_components( cells ) ):
         if len(c) < 2:
             continue
         logger.info( 'Found attracting component of length %d' % len(c) )
         for p in c:
             cv2.circle( syncImg, (p[1], p[0]), 2, (i+1), 2 )
-            syncDict[str(c)].append( cells.node[p]['timeseries'] )
+            # syncDict[str(c)].append( cells.node[p]['timeseries'] )
 
     plt.subplot( 2, 2, 2 )
     plt.imshow( timeseries_
@@ -159,16 +165,16 @@ def correlate_node_by_sync( cells ):
 
     # Here we draw the synchronization.
     plt.subplot( 2, 2, 4 )
-    clusters = []
-    for c in syncDict:
-        clusters += syncDict[c]
-        # Append two empty lines to separate the clusters.
-        clusters += [ np.zeros( timeseries_.shape[1] ) ] 
-    try:
-        plt.imshow( np.vstack(clusters), interpolation = 'none', aspect = 'auto' )
-        plt.colorbar(  ) #orientation = 'horizontal' )
-    except Exception as e:
-        print( "Couldn't plot clusters %s" % e )
+    # clusters = []
+    # for c in syncDict:
+        # clusters += syncDict[c]
+        # # Append two empty lines to separate the clusters.
+        # clusters += [ np.zeros( timeseries_.shape[1] ) ] 
+    # try:
+        # plt.imshow( np.vstack(clusters), interpolation = 'none', aspect = 'auto' )
+        # plt.colorbar(  ) #orientation = 'horizontal' )
+    # except Exception as e:
+        # print( "Couldn't plot clusters %s" % e )
     plt.tight_layout( )
     plt.savefig( outfile )
     logger.info( 'Saved to file %s' % outfile )
