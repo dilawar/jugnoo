@@ -138,6 +138,8 @@ def correlate_node_by_sync( cells ):
 
     syncImg = np.zeros( shape=template_.shape )
     syncDict = defaultdict( list )
+    cells.graph['shape'] = template_.shape
+    cells.graph['timeseries'] = timeseries_
     nx.write_gpickle( cells, 'cells.gpickle' )
     logger.info( 'Logging out after writing to graph.' )
     return 
