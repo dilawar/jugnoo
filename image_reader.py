@@ -15,7 +15,6 @@ __status__           = "Development"
 
 import numpy as np
 import environment as e
-import cv2
 
 import logging 
 logger = logging.getLogger('')
@@ -50,6 +49,7 @@ def get_bounding_box( ):
     return (r1, c1, r2, c2)
 
 def read_frames_from_avi( filename ):
+    import cv2
     cap = cv2.VideoCapture( filename )
     frames = []
     while cap.isOpened():
@@ -66,7 +66,7 @@ def read_frames_from_avi( filename ):
     return frames
 
 
-def read_frames_from_tiff( filename ):
+def read_frames_from_tiff( filename, **kwargs ):
     from PIL import Image
     tiff = Image.open( filename )
     frames = []
@@ -79,18 +79,20 @@ def read_frames_from_tiff( filename ):
             bbox = get_bounding_box( )
             if bbox:
                 framedata = framedata[bbox[0]:bbox[2], bbox[1]:bbox[3]]
+            # if kwargs.get('min2zero', False):
+                # framedata = framedata - framedata.min()
             frames.append( framedata )
     except EOFError as e:
         logger.info("Total frames: %s" % i )
         logger.info("All frames are processed")
     return frames
 
-def read_frames( videofile ):
+def read_frames( videofile, **kwargs ):
     ext = videofile.split('.')[-1]
     if ext in [ 'tif', 'tiff' ]:
-        return read_frames_from_tiff( videofile )
+        return read_frames_from_tiff( videofile, **kwargs )
     elif ext in [ 'avi', 'mp4' ]:
-        return read_frames_from_avi ( videofile )
+        return read_frames_from_avi ( videofile, **kwargs )
     else:
         logger.error('Format %s is not supported yet' % ext )
         quit()

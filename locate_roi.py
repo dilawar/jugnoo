@@ -21,17 +21,20 @@ import image_reader as imgr
 import environment as e
 # import igraph as ig
 import networkx as nx
+import itertools
 
 import logging
 logger = logging.getLogger('')
 
 # g_ = ig.Graph( )
 g_ = nx.Graph( )
-cell_ = nx.Graph( )
 indir_ = None
 pixalcvs_ = []
 template_ = None
-
+avg_ = None
+timeseries_ = None
+frames_ = None
+raw_ = None
 
 def plot_two_pixals( a, b, window = 3 ):
     plt.figure( )
@@ -73,11 +76,11 @@ def is_connected( m, n, img ):
         return False
     return True
 
-def build_cell_graph( graph, frames ):
+def build_cell_graph( graph, frames, plot = False ):
     """ Build a cell graph """
-    global cell_ 
     global pixalcvs_
     global template_
+    cell_ = nx.Graph( ) 
     nodesToProcess = sorted( pixalcvs_ , reverse = True )
     cells = []
     img = np.int32( np.sum( frames, axis = 2 ))
@@ -85,7 +88,8 @@ def build_cell_graph( graph, frames ):
         if graph.node[n].get('cell', None) is not None:
             continue
         graph.node[n]['cell'] = len(cells)
-        cell_.add_node( n , cv = c )
+        cell_.add_node( n , cv = c, timeseries = frames[n[0],n[1],:] )
+        logger.debug( 'Added timeseris value to cell graph' )
         cells.append( n )
         for m in graph.nodes( ):
             # Definately not part of the cell.
@@ -97,42 +101,81 @@ def build_cell_graph( graph, frames ):
                 graph.node[m]['cell'] = len( cells )
 
     print( '[INFO] Total cells %d' % len(cells) )
+    if not plot:
+        return  cell_
+
     for p in cells:
-        cv2.circle( template_, (p[1], p[0]), 2, 20 );
+        cv2.circle( template_, (p[1], p[0]), 3, 20 );
     plt.figure( )
     plt.imshow( template_, interpolation = 'none', aspect = 'auto' )
     plt.colorbar( )
+    plt.title( 'Total cells %d' % len(cells) )
     plt.savefig( 'cells.png' )
+    return cell_
 
-def build_correlation_graph( graph, frames ):
-    logger.info( 'Total pixals %d' % ( graph.number_of_nodes() ** 2 ))
-    return 
+def sync_index( a, b ):
+    # Must smooth out the high frequency components.
+    assert min(len( a ), len( b )) > 30, "Singal too small"
+    kernal = np.ones( 21 ) / 21.0
+    a = np.convolve( a, kernal, 'same' )
+    b = np.convolve( b, kernal, 'same' )
+    signA = np.sign( np.diff( a ) )
+    signB = np.sign( np.diff( b ) )
+    s1 = np.sum( signA * signB ) / len( signA )
+    s2 = sig.fftconvolve(signA, signB).max() / len( signA )
+    return max(s1, s2)
 
-    for i, m in enumerate(graph.nodes( )):
-        logger.info( 'Done nodes %d (out of %d)' % (i, graph.number_of_nodes() ) )
-        for n in graph.nodes( ):
-            if distance( m, n ) < 10:
-                continue 
-            print( m, n, distance( m, n ) )
-            # mname, nname = m['name'], n['name']
-            # if m == n: 
-                # continue 
-            # (m1, m2), (n1, n2) = eval(mname), eval(nname)
-            # pixalsM, pixalsN = frames[m1,m2,:], frames[n1,n2,:]
-            # plot_two_pixals( pixalsM, pixalsN )
-            # corr = activity_corr( pixalsM, pixalsN )
-            # graph.add_edge( m, n, weight=corr )
-            # logger.debug( 'Computed corr between %s and %s = %s' % ( 
-                # mname, nname, corr) 
-                # )
-    logger.info( 'Done building graph. Now extract communities' )
-    outfile = os.path.join( e.args_.input, 'activity_correlation.gml' )
-    ig.write( graph, outfile, format = 'graphml' )
-    print( '[INFO] Wrote graph to %s' % outfile )
+def correlate_node_by_sync( cells ):
+    global template_ , avg_
+    for m, n in itertools.combinations( cells.nodes( ), 2 ):
+        vec1, vec2 = cells.node[m]['timeseries'], cells.node[n]['timeseries']
+        corr = sync_index( vec1, vec2 )
+        if corr > 0.6:
+            cells.add_edge( m, n, weight = corr )
 
-def process_input( ):
+    img = np.zeros( shape=template_.shape )
+    outfile = 'final.png' 
+    plt.subplot( 2, 2, 1 )
+    plt.imshow( avg_, interpolation = 'none', aspect = 'auto' )
+    plt.title( 'All frames averaged' )
+    plt.colorbar( orientation = 'horizontal' )
+    for i, c in enumerate( nx.k_clique_communities( cells, 4 )):
+        for p in c:
+            cv2.circle( img, (p[1], p[0]), 2, 10*i, 2 )
+    plt.subplot( 2, 2, 2 )
+    plt.imshow( timeseries_
+            , interpolation = 'none', aspect = 'auto', cmap = 'seismic' )
+    plt.colorbar( orientation = 'horizontal' )
+    plt.title( 'Activity of each pixal' )
+    plt.subplot( 2, 2, 3 )
+    outdeg = cells.degree( )
+    toKeep = [ n for n in outdeg if outdeg[n] > 2 ]
+    g = cells.subgraph( toKeep )
+
+    from networkx.drawing.nx_agraph import graphviz_layout
+    pos = graphviz_layout( g , 'neato' )
+    nx.draw( g, pos )
+
+    # Here we draw the synchronization.
+    plt.subplot( 2, 2, 4 )
+
+    plt.savefig( outfile )
+    logger.info( 'Saved to file %s' % outfile )
+
+def fix_frames( frames ):
+    result = [ ]
+    for f in frames:
+        m, u = f.mean(), f.std( )
+        f = np.clip(f, m - 2*u, m + 2*u )
+        # f -= f.min( )
+        result.append( f )
+    return np.int32( np.dstack( result ) )
+        
+
+def process_input( plot = False ):
     global g_
-    global template_
+    global template_, avg_
+    global frames_, timeseries_
     inputdir = e.args_.input
     tiffs = []
     for d, sd, fs in os.walk( inputdir ):
@@ -143,13 +186,27 @@ def process_input( ):
     allFrames = []
     for inputfile in tiffs:
         logger.info("Processing %s" % inputfile)
-        frames = imgr.read_frames( inputfile )
+        frames = imgr.read_frames( inputfile, min2zero = True )
         allFrames += frames 
 
     template_ = np.zeros( shape = allFrames[0].shape )
-    frames = np.dstack( allFrames )
-    for i in range(frames.shape[2]):
-        f = frames[:,:,i]
+    # Save the raw frames.
+    raw_ = np.dstack( allFrames )
+
+    # These are fixed frames.
+    frames = fix_frames( allFrames )
+    frames_ = np.int32( frames )
+
+    # Raw average 
+    avg_ = np.int32( np.mean( raw_, axis = 2 ) )
+
+    # get all timeseries
+    timeseries = []
+    rows, cols = frames.shape[0:2]
+    for i, j in [ (x,y) for x in range(rows) for y in range( cols ) ]:
+        timeseries.append( frames[i,j,:] )
+    timeseries_ = np.uint32( np.vstack( timeseries ) ) 
+
     for (r,c), val in np.ndenumerate( template_ ):
         pixals = frames[r,c,:]
         cv = pixals.var( ) / pixals.mean( ) 
@@ -158,15 +215,19 @@ def process_input( ):
             template_[r,c] = pixals.mean( )
             g_.add_node( (r,c), cv = cv )
             pixalcvs_.append( (cv, (r,c) ) )
+    if plot:
+        plt.subplot(2, 1, 1 )
+        plt.imshow( template_ )
+        plt.colorbar( )
+        plt.subplot(2, 1, 2 )
+        plt.imshow( avg_ )
+        plt.tight_layout( )
+        plt.colorbar( )
+        plt.savefig( "template.png" )
+        print( 'Saved to template.png' )
 
-    plt.subplot(2, 1, 1 )
-    plt.imshow( template_ )
-    plt.colorbar( )
-    plt.subplot(2, 1, 2 )
-    plt.imshow( np.sum( frames, axis = 2 ) )
-    plt.savefig( "template.png" )
-    print( 'Saved to template.png' )
-    build_cell_graph( g_, frames )
+    cells = build_cell_graph( g_, frames )
+    correlate_node_by_sync( cells )
 
     
 def main( ):
@@ -207,3 +268,6 @@ if __name__ == '__main__':
     parser.parse_args( namespace = e.args_ )
     e.args_.output = e.args_.output or ('%s_out.png' % e.args_.input)
     main( )
+
+
+

@@ -19,7 +19,7 @@ import cv2
 import logging 
 logger = logging.getLogger('')
 
-def get_frame_data( frame ):
+def get_frame_data( frame, **kwargs ):
     try:
         img = np.array(frame)
     except Exception as e:
@@ -58,7 +58,7 @@ def read_frames_from_avi( filename, max_frames = None ):
     return frames
 
 
-def read_frames_from_tiff( filename, max_frames = -1 ):
+def read_frames_from_tiff( filename, **kwargs ):
     from PIL import Image
     tiff = Image.open( filename )
     i, frames = 0, []
@@ -67,6 +67,8 @@ def read_frames_from_tiff( filename, max_frames = -1 ):
             i += 1
             tiff.seek( tiff.tell() + 1 )
             framedata = get_frame_data( tiff )
+            if kwargs.get( 'min2zero', False ):
+                framedata = framedata - framedata.min( )
             frames.append( framedata )
             if max_frames == i:
                 break
@@ -76,12 +78,12 @@ def read_frames_from_tiff( filename, max_frames = -1 ):
     logger.info("Total frames: %s" % len(frames) )
     return frames
 
-def read_frames( videofile, max_frames = -1):
+def read_frames( videofile, **kwargs ):
     ext = videofile.split('.')[-1]
     if ext in [ 'tif', 'tiff' ]:
-        return read_frames_from_tiff( videofile, max_frames )
+        return read_frames_from_tiff( videofile, **kwargs )
     elif ext in [ 'avi', 'mp4' ]:
-        return read_frames_from_avi ( videofile, max_frames )
+        return read_frames_from_avi ( videofile, **kwargs )
     else:
         logger.error('Format %s is not supported yet' % ext )
         quit()
