@@ -201,6 +201,7 @@ def process_input( plot = False ):
         frames = imgr.read_frames( inputfile, min2zero = True )
         allFrames += frames 
 
+    logger.info( 'Total frames to analyze %d' % len(allFrames ))
     template_ = np.zeros( shape = allFrames[0].shape )
     # Save the raw frames.
     raw_ = np.dstack( allFrames )

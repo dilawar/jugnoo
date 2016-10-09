@@ -83,8 +83,7 @@ def read_frames_from_tiff( filename, **kwargs ):
                 # framedata = framedata - framedata.min()
             frames.append( framedata )
     except EOFError as e:
-        logger.info("Total frames: %s" % i )
-        logger.info("All frames are processed")
+        logger.info("Total frames read from file %d" % i )
     return frames
 
 def read_frames( videofile, **kwargs ):
