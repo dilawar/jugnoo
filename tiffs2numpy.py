@@ -114,6 +114,10 @@ def main( args ):
     print( '[INFO] Matrix shape: %s' % str(frames.shape) )
     outfile = args.outfile or os.path.join( args.dir, 'all_frames.npy' )
     np.save( outfile, frames )
+    plt.imshow( np.mean(frames, axis=2), interpolation = 'none', aspect = 'auto' )
+    plt.colorbar( )
+    plt.savefig( '%s.png' % outfile )
+    plt.close( )
     print( '[INFO] Wrote all frames to %s' % outfile )
     quit( )
 
