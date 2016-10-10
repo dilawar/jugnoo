@@ -43,15 +43,15 @@ def sync_index( x, y, method = 'pearson' ):
     raise UserWarning( 'Method %s is not implemented' % method )
 
 
-def create_correlate_graph( graph, img ):
+def create_correlate_graph( graph ):
     global g_
     nodes = graph.nodes()
     for n1, n2 in itertools.combinations( nodes, 2 ):
         t1 = graph.node[n1]['timeseries']
         t2 = graph.node[n2]['timeseries']
         s = sync_index( t1, t2, 'dilawar' )
-        if s > 0.95:
-            print( "%s -> %s (%.3f)" % (n1, n2, s ) )
+        if s > 0.75:
+            print( "Edge %s -> %s (%.3f)" % (n1, n2, s ) )
             g_.add_edge( n1, n2, corr = s )
             # g_.add_edge( n2, n1, corr = s )
 
@@ -59,27 +59,9 @@ def create_correlate_graph( graph, img ):
     outdeg = g_.degree()
     to_keep = [ n for n in outdeg if outdeg[n] > 1 ]
     g_ = g_.subgraph( to_keep )
-    communityColor = 0
-    for k in nx.k_clique_communities( g_, 3 ):
-        communityColor += 1
-        for cell in k:
-            indices = g_.node[cell]['indices']
-            for i, j in indices:
-                print( i, j )
-                img[i,j] = communityColor
-
-    nx.write_gpickle( g_,  'cells.pickle' )
+    nx.write_gpickle( g_,  'community_graph.pickle' )
     print( '[INFO] Graph pickle is saved' )
-    from networkx.drawing.nx_agraph import graphviz_layout
-    plt.figure( )
-    pos = graphviz_layout( g_, 'neato' )
-    plt.subplot( 2, 1, 1 )
-    nx.draw( g_, pos = pos )
-    plt.savefig( 'clusters.png' )
-    plt.figure( )
-    plt.imshow( img, interpolation = 'none', aspect = 'auto' )
-    plt.colorbar( )
-    plt.savefig( 'result.png' )
+
 
 def main( cells, frames ):
     if isinstance( cells, str):
@@ -97,11 +79,12 @@ def main( cells, frames ):
         pixals = np.mean( pixals , axis = 0)
         g_.add_node( i, timeseries = pixals, indices = indices )
 
-    img = np.zeros( shape=frames[:,:,0].shape ).T
-    print( img.shape )
-    create_correlate_graph( g_, img )
+    print( 'Creating correlation graph' )
+    g_.graph[ 'shape' ] = frames[:,:,0].shape
+    create_correlate_graph( g_ )
 
 if __name__ == '__main__':
+    # It accepts two files.
     cells = sys.argv[1]
     frames = sys.argv[2]
     main( cells, frames )
