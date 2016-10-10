@@ -182,9 +182,9 @@ def garnish_frame( frame ):
     """ Test modification to frame.
     Doesn't work well because some patches of images are pretty bright.
     """
-    f = frame.copy()
-    m, u = f.mean(), f.std()
-    f[ f < m ] = 0
+    # f = cv2.medianBlur( frame, 3 )
+    # f = cv2.GaussianBlur( frame, (5,5), 0 )
+    f = cv2.bilateralFilter( frame, 5, 50, 50 )
     return f
 
 def save_image( img, filename, **kwargs ):
@@ -193,15 +193,14 @@ def save_image( img, filename, **kwargs ):
     plt.colorbar( )
     if kwargs.get( 'title', False):
         plt.title( kwargs.get( 'title' ) )
-    print( 'Saved figure to %s' % filename )
     np.save( '%s.npy' % filename, img )
     plt.savefig( filename )
+    print( 'Saved figure to {0} and to {0}.npy'.format(filename ) )
     plt.close( )
 
 def play( img ):
     for f in img.T:
-        ff = garnish_frame( f )
-        cv2.imshow( 'frame', np.hstack( (f,ff) ) )
+        cv2.imshow( 'frame', np.hstack((f, garnish_frame(f))) )
         cv2.waitKey(10)
 
 def filter_pixals( frames, plot = False ):
@@ -226,36 +225,40 @@ def compute_cells( img, **kwargs ):
     d = kwargs.get( 'patch_rect_size', 20 )
     cellColor = 1
     while True:
-        (minVal, maxVal, minLoc, x) = cv2.minMaxLoc( varImg )
+        (minVal, maxVal, min, x) = cv2.minMaxLoc( varImg )
         assert maxVal == varImg.max( )
-        logging.info( 'Computing cell at (%3d,%3d) (%.3f)' % (x[1],x[0],maxVal))
         if maxVal <= img.mean():
             break
-        # cells[ x[1], x[0] ] = cellColor
-        # varImg[ x[1], x[0] ] = 0
+
         # In the neighbourhood, find the pixals which are closer to this pixal
         # and have good variation.
+        logging.info( 'Computing cell at (%3d,%3d) (%.3f)' % (x[1],x[0],maxVal))
         for i, j in itertools.product( range(d), range(d) ):
             i, j = x[1] + (i - d/2), x[0] + (j - d/2)
             if i < img.shape[0] and j < img.shape[1]:
-                if is_connected( (x[1],x[0]), (i, j), img, max(maxVal - 5.0, img.mean()) ):
+                if is_connected( (x[1],x[0]), (i, j), img, max(maxVal - 1.0, img.mean()) ):
                     logging.debug( 'Point %d, %d is connected' % (i, j) )
-                    cells[i, j] = cellColor
+
+                    # If only this pixal does not belong to other cell.
+                    if cells[i,j] == 0:
+                        cells[i, j] = cellColor
                     varImg[i, j] = 0
         cellColor += 1
-    
+
     # e = cv2.Canny( img, img.mean() - img.std( ), img.mean() + img.std() )
     # ret, thresh = cv2.threshold(img, img.mean() , img.mean( ) + img.std() ,0)
     # e, contours, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
     # cv2.drawContours( edges, contours, -1, 255, 1 )
-    save_image( img, 'variations.png' )
     save_image( cells, 'cells.png' )
+    print( '[INFO] Pixals belonging to same cell have same color values' )
 
 def process_input( imgfile, plot = False ):
     global g_
     global template_, avg_
     global frames_, timeseries_
-    frames_ = np.load( imgfile )
+    data = np.load( imgfile )
+    # play( data )
+    frames_ = np.dstack( [ garnish_frame( f ) for f in data.T ] )
     avg_ = np.mean( frames_, axis = 2 )
     variationAmongPixals = filter_pixals( frames_ )
     cellsImg = compute_cells( variationAmongPixals )

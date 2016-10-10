@@ -18,7 +18,7 @@ import logging
 import cv2
 from collections import defaultdict
 
-def main( graphfile ):
+def main( npfile ):
     cells = nx.read_gpickle( graphfile )
     timeseries_ = cells.graph['timeseries']
     syncDict = defaultdict( list )
@@ -45,5 +45,5 @@ def main( graphfile ):
     plt.savefig( 'clusters.png' )
 
 if __name__ == '__main__':
-    graphfile = sys.argv[1]
-    main( graphfile )
+    npfile = sys.argv[1]
+    main( npfile )
