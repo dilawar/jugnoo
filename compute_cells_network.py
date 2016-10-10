@@ -34,7 +34,10 @@ cell_ = nx.DiGraph( )
 indir_ = None
 pixalcvs_ = []
 template_ = None
+
+# Keep the average of all activity here 
 avg_ = None
+
 timeseries_ = None
 frames_ = None
 raw_ = None
@@ -59,13 +62,29 @@ def distance( p1, p2 ):
     x2, y2 = p2 
     return (( x1 - x2 ) ** 2.0 + (y1 - y2 ) ** 2.0 ) ** 0.5
 
-def is_connected( m, n, img ):
+def is_connected( m, n, img, thres = 10 ):
     """ 
     If pixal m and pixal n have path between them, return true.
+
+    Make sure that m and n are bound within image.
     """
-    line = simg.map_coordinates(img, [ m, n ] )
-    if line.min() < 1:
-        return False
+    if n[0] != m[0]:
+        slope = float(n[1] - m[1]) / float(n[0] - m[0])
+        if n[0] < m[0]:
+            x = np.arange(m[0], n[0]-1, -1 )
+        else:
+            x = np.arange(m[0], n[0]+1, 1 )
+        points = [ (a, int(m[1] + (a - m[0]) * slope)) for a in x ]
+    else:
+        if n[1] > m[1]:
+            ys = np.arange(m[1], n[1]+1, 1 )
+        else:
+            ys = np.arange(m[1], n[1]-1, -1 )
+        points = [ (m[0], y) for y in ys ]
+
+    for p in points:
+        if img[p] < thres:
+            return False
     return True
 
 def build_cell_graph( graph, frames, plot = False ):
@@ -109,15 +128,21 @@ def build_cell_graph( graph, frames, plot = False ):
     plt.savefig( 'cells.png' )
     return cell_
 
-def sync_index( a, b ):
+def sync_index( x, y, method = 'pearson' ):
     # Must smooth out the high frequency components.
-    assert min(len( a ), len( b )) > 30, "Singal too small"
-    # a, b = [ smooth( x, 11 ) for x in [a, b ] ]
-    signA = np.sign( np.diff( a ) )
-    signB = np.sign( np.diff( b ) )
-    s1 = np.sum( signA * signB ) / len( signA )
-    s2 = sig.fftconvolve(signA, signB).max() / len( signA )
-    return max(s1, s2)
+    assert min(len( x ), len( y )) > 30, "Singal too small"
+    a, b = [ smooth( x, 31 ) for x in [x, y ] ]
+    if method == 'dilawar':
+        signA = np.sign( np.diff( a ) )
+        signB = np.sign( np.diff( b ) )
+        s1 = np.sum( signA * signB ) / len( signA )
+        s2 = sig.fftconvolve(signA, signB).max() / len( signA )
+        return max(s1, s2) ** 0.5
+    elif method == 'pearson':
+        aa, bb = a / a.max(), b / b.max( )
+        c = scipy.stats.pearsonr( aa, bb )
+        return c[0]
+    raise UserWarning( 'Method %s is not implemented' % method )
 
 def correlate_node_by_sync( cells ):
     global template_ , avg_
@@ -150,108 +175,97 @@ def fix_frames( frames ):
         m, u = f.mean(), f.std( )
         # f[ f < (m - 2 * u) ] = 0
         # f[ f > (m + 2 * u) ] = 255.0
-        # scipy.stats.threshold( f, m - 2*u, m + 2*u, 0, 255 )
         result.append( f )
     return np.int32( np.dstack( result ) )
-        
 
-def process_input( plot = False ):
+def garnish_frame( frame ):
+    """ Test modification to frame.
+    Doesn't work well because some patches of images are pretty bright.
+    """
+    f = frame.copy()
+    m, u = f.mean(), f.std()
+    f[ f < m ] = 0
+    return f
+
+def save_image( img, filename, **kwargs ):
+    plt.figure( )
+    plt.imshow( img, interpolation = 'none', aspect = 'auto' )
+    plt.colorbar( )
+    if kwargs.get( 'title', False):
+        plt.title( kwargs.get( 'title' ) )
+    print( 'Saved figure to %s' % filename )
+    np.save( '%s.npy' % filename, img )
+    plt.savefig( filename )
+    plt.close( )
+
+def play( img ):
+    for f in img.T:
+        ff = garnish_frame( f )
+        cv2.imshow( 'frame', np.hstack( (f,ff) ) )
+        cv2.waitKey(10)
+
+def filter_pixals( frames, plot = False ):
+    r, c, nframes = frames.shape
+    cvs = np.zeros( shape = (r,c) )
+    for i, j in itertools.product( range(r), range(c) ):
+        pixals = frames[i,j,:]
+        cv = pixals.var() / pixals.mean()
+        cvs[i,j] = cv 
+    # Now threshold the array at mean + std. Rest of the pixals are good to go.
+    cvs = scipy.stats.threshold( cvs, cvs.mean( ) + cvs.std( ), cvs.max(), 0 )
+    if plot:
+        save_image( cvs, 'variations.png', title ='Variation in pixal' )
+    return cvs
+
+def compute_cells( img, **kwargs ):
+    """ Return dominant pixal representing a cell. 
+    Start with the pixal with maximum variation.
+    """
+    cells = np.zeros( img.shape )
+    varImg = img.copy( )
+    d = kwargs.get( 'patch_rect_size', 20 )
+    cellColor = 1
+    while True:
+        (minVal, maxVal, minLoc, x) = cv2.minMaxLoc( varImg )
+        assert maxVal == varImg.max( )
+        logging.info( 'Computing cell at (%3d,%3d) (%.3f)' % (x[1],x[0],maxVal))
+        if maxVal <= img.mean():
+            break
+        # cells[ x[1], x[0] ] = cellColor
+        # varImg[ x[1], x[0] ] = 0
+        # In the neighbourhood, find the pixals which are closer to this pixal
+        # and have good variation.
+        for i, j in itertools.product( range(d), range(d) ):
+            i, j = x[1] + (i - d/2), x[0] + (j - d/2)
+            if i < img.shape[0] and j < img.shape[1]:
+                if is_connected( (x[1],x[0]), (i, j), img, max(maxVal - 5.0, img.mean()) ):
+                    logging.debug( 'Point %d, %d is connected' % (i, j) )
+                    cells[i, j] = cellColor
+                    varImg[i, j] = 0
+        cellColor += 1
+    
+    # e = cv2.Canny( img, img.mean() - img.std( ), img.mean() + img.std() )
+    # ret, thresh = cv2.threshold(img, img.mean() , img.mean( ) + img.std() ,0)
+    # e, contours, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    # cv2.drawContours( edges, contours, -1, 255, 1 )
+    save_image( img, 'variations.png' )
+    save_image( cells, 'cells.png' )
+
+def process_input( imgfile, plot = False ):
     global g_
     global template_, avg_
     global frames_, timeseries_
-    inputdir = e.args_.input
-    tiffs = []
-    for d, sd, fs in os.walk( inputdir ):
-        for f in fs:
-            if 'tiff' in f[-5:].lower() or 'tif' in f[-5:].lower():
-                tiffs.append( os.path.join(d, f) )
-
-    allFrames = []
-    for inputfile in tiffs:
-        logger.info("Processing %s" % inputfile)
-        frames = imgr.read_frames( inputfile, min2zero = True )
-        allFrames += frames 
-
-    logger.info( 'Total frames to analyze %d' % len(allFrames ))
-    template_ = np.zeros( shape = allFrames[0].shape )
-    # Save the raw frames.
-    raw_ = np.dstack( allFrames )
-
-    # These are fixed frames.
-    frames = fix_frames( allFrames )
-    frames_ = np.int32( frames )
-
-    # Raw average 
-    avg_ = np.int32( np.mean( raw_, axis = 2 ) )
-
-    # get all timeseries
-    timeseries = []
-    rows, cols = frames.shape[0:2]
-    for i, j in [ (x,y) for x in range(rows) for y in range( cols ) ]:
-        timeseries.append( frames[i,j,:] )
-    timeseries_ = np.uint32( np.vstack( timeseries ) ) 
-
-    for (r,c), val in np.ndenumerate( template_ ):
-        pixals = frames[r,c,:]
-        cv = pixals.var( ) / pixals.mean( ) 
-        # if pixals.max() >= pixals.mean() + 4 * pixals.std():
-        if cv > 4.0:
-            template_[r,c] = pixals.mean( )
-            g_.add_node( (r,c), cv = cv )
-            pixalcvs_.append( (cv, (r,c) ) )
-    if plot:
-        plt.subplot(2, 1, 1 )
-        plt.imshow( template_ )
-        plt.colorbar( )
-        plt.subplot(2, 1, 2 )
-        plt.imshow( avg_ )
-        plt.tight_layout( )
-        plt.colorbar( )
-        plt.savefig( "template.png" )
-        print( 'Saved to template.png' )
-
-    cells = build_cell_graph( g_, frames )
-    correlate_node_by_sync( cells )
-
+    frames_ = np.load( imgfile )
+    avg_ = np.mean( frames_, axis = 2 )
+    variationAmongPixals = filter_pixals( frames_ )
+    cellsImg = compute_cells( variationAmongPixals )
     
-def main( ):
+def main( imgfile ):
     t1 = time.time()
-    process_input(  )
+    process_input( imgfile  )
     print( '[INFO] Total time taken %f seconds' % (time.time() - t1) )
 
 if __name__ == '__main__':
-    import argparse
-    description = '''What it does? README.md file or Ask dilawars@ncbs.res.in'''
-    parser = argparse.ArgumentParser(description=description)
-
-    parser.add_argument('--input', '-i'
-        , required = True
-        , help = 'Input dir'
-        )
-    parser.add_argument('--output', '-o'
-        , required = False
-        , help = 'Output file'
-        )
-    parser.add_argument( '--debug', '-d'
-        , required = False
-        , default = 0
-        , type = int
-        , help = 'Enable debug mode. Default 0, debug level'
-        )
-    parser.add_argument('--box', '-b'
-        , required = False
-        , default = "0,0,-1,-1"
-        , help = 'Bounding box  row1,column1,row2,column2 e.g 0,0,100,100'
-        )
-
-    parser.add_argument('--pixal_size', '-px'
-        , required = False
-        , type = float
-        , help = 'Pixal size in micro meter'
-        )
-    parser.parse_args( namespace = e.args_ )
-    e.args_.output = e.args_.output or ('%s_out.png' % e.args_.input)
-    main( )
-
-
+    imgfile = sys.argv[1]
+    main( imgfile )
 
