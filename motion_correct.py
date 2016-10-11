@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 """motion_correct.py:
 
@@ -17,27 +17,25 @@ __status__           = "Development"
 
 import sys
 import os
-import matplotlib
-matplotlib.use( 'TkAgg' )
-import matplotlib.pyplot as plt
-import numpy as np
-import scipy.signal
 import cv2
 
+def use_sima( tifffile ):
+    import sima.motion
+    outfile = [[[ '%s_corrected.tif' % tifffile ]]]
+    approach = sima.motion.PlaneTranslation2D( max_displacement=[20,20] )
+    seqs = [ sima.Sequence.create( 'TIFF', tifffile ) ]
+    dataset = approach.correct( seqs, '_sima.sima' )
+    try:
+        dataset.export_frames( outfile, fmt = 'TIFF16' )
+    except Exception as e:
+        print( '[WARN] Failed to correct motion. Error was %s' % e )
+        os.rmdir( '_sima' )
+        quit( )
+    os.rmdir( '_sima.sima' )
+    print( '[INFO] Wrote corrected file to %s' % outfile )
 
 def main( datafile ):
-    stack = np.load( datafile ).T
-    f0 = cv2.medianBlur( stack[0], 11 )
-    # f0 = stack[1]
-    h, w = 50, 50
-    for f in stack[:3]:
-        f = cv2.medianBlur( f, 11 )
-        print np.sum( f - f0 )
-        ff = f[h:f.shape[0]-h,w:f.shape[1]-w]
-        conv = scipy.signal.fftconvolve( f0, ff / ff.max(), 'valid' )
-        y, x = cv2.minMaxLoc( conv )[3]
-        print x, y 
-
+    use_sima( datafile )
 
 if __name__ == '__main__':
     datafile = sys.argv[1]
