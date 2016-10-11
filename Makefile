@@ -12,7 +12,7 @@ cells.png.npy : all_frames.npy
 	$(PYTHON) ./compute_cells.py $< 
 
 result.png : ./correlation_graph.pickle cells.png.npy all_frames.npy 
-
+	$(PYTHON) ./generate_community.py --community ./community_graph.pickle
 
 correlation_graph.pickle : ./generate_correlation_graph.py 
 	$(PYTHON) ./generate_correlation_graph.py --cells ./cells.png.npy \
