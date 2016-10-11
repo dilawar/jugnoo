@@ -11,8 +11,12 @@ all_frames.npy : tiffs2numpy.py
 cells.png.npy : all_frames.npy
 	$(PYTHON) ./compute_cells.py $< 
 
-result.png : cells.png.npy all_frames.npy 
-	$(PYTHON) ./cluster_cells.py $?
+result.png : ./correlation_graph.pickle cells.png.npy all_frames.npy 
+
+
+correlation_graph.pickle : ./generate_correlation_graph.py 
+	$(PYTHON) ./generate_correlation_graph.py --cells ./cells.png.npy \
+	    --frames ./all_frames.npy
 
 clean : 
 	rm -rf *.png 

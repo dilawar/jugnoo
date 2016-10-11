@@ -19,6 +19,10 @@ import networkx as nx
 import scipy.signal
 import itertools
 
+import logging
+logging.basicConfig( level = logging.INFO )
+logger = logging.getLogger( 'correlation' )
+
 # g_ = nx.DiGraph( )
 g_ = nx.Graph( )
 
@@ -51,7 +55,7 @@ def create_correlate_graph( graph ):
         t2 = graph.node[n2]['timeseries']
         s = sync_index( t1, t2, 'dilawar' )
         if s > 0.75:
-            print( "Edge %s -> %s (%.3f)" % (n1, n2, s ) )
+            logger.debug( "Edge %s -> %s (%.3f)" % (n1, n2, s ) )
             g_.add_edge( n1, n2, corr = s )
             # g_.add_edge( n2, n1, corr = s )
 
@@ -59,17 +63,20 @@ def create_correlate_graph( graph ):
     outdeg = g_.degree()
     to_keep = [ n for n in outdeg if outdeg[n] > 1 ]
     g_ = g_.subgraph( to_keep )
-    nx.write_gpickle( g_,  'community_graph.pickle' )
-    print( '[INFO] Graph pickle is saved' )
 
 
-def main( cells, frames ):
+def main( **kwargs ):
+    cells = kwargs['cells']
+    frames = kwargs['frames']
     if isinstance( cells, str):
         cells = np.load( cells )
     if isinstance( frames, str):
         frames = np.load( frames )
 
-    for i in range(1, int(cells.max( )) ):
+    logger.info( 'Creating correlation graph' )
+    N = int( cells.max() )
+    for i in range(1, N):
+        logger.info( '\tDone %d out of %d' % (i, N) )
         indices = list(zip( *np.where( cells == i ) ))
         if len( indices ) < 2:
             continue
@@ -79,12 +86,33 @@ def main( cells, frames ):
         pixals = np.mean( pixals , axis = 0)
         g_.add_node( i, timeseries = pixals, indices = indices )
 
-    print( 'Creating correlation graph' )
     g_.graph[ 'shape' ] = frames[:,:,0].shape
     create_correlate_graph( g_ )
+    outfile = kwargs.get( 'output', False)  or  'correlation_graph.pickle'
+    logger.info( 'Writing pickle of graph to %s' % outfile )
+    nx.write_gpickle( g_, outfile )
+    logger.info( 'Graph pickle is saved to %s' % outfile )
+
 
 if __name__ == '__main__':
     # It accepts two files.
-    cells = sys.argv[1]
-    frames = sys.argv[2]
-    main( cells, frames )
+    import argparse
+    # Argument parser.
+    description = '''Generate correlation graph.'''
+    parser = argparse.ArgumentParser(description=description)
+    parser.add_argument('--cells', '-c'
+        , required = True
+        , help = 'Numpy file representing cells.'
+        )
+    parser.add_argument('--frames', '-f'
+        , required = True
+        , help = 'A numpy file containing timeseries of every pixal'
+        )
+    parser.add_argument('--output', '-o'
+        , required = False
+        , help = 'Outfile graph file (pickle)'
+        )
+    class Args: pass 
+    args = Args()
+    parser.parse_args(namespace=args)
+    main( **vars(args) )
