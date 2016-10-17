@@ -222,7 +222,11 @@ def compute_cells( img, **kwargs ):
     """
     cells = np.zeros( img.shape )
     varImg = img.copy( )
-    d = kwargs.get( 'patch_rect_size', 20 )
+
+    # patch_rect_size is rectangle which represents the maximum dimension of
+    # cell. We start a pixal with maximum variation and search in this patch for
+    # other pixals which might be on the same cell.
+    d = kwargs.get( 'patch_rect_size', 40 )
     cellColor = 1
     while True:
         (minVal, maxVal, min, x) = cv2.minMaxLoc( varImg )
@@ -238,19 +242,12 @@ def compute_cells( img, **kwargs ):
             if i < img.shape[0] and j < img.shape[1]:
                 if is_connected( (x[1],x[0]), (i, j), img, max(maxVal - 1.0, img.mean()) ):
                     logging.debug( 'Point %d, %d is connected' % (i, j) )
-
                     # If only this pixal does not belong to other cell.
                     if cells[i,j] == 0:
                         cells[i, j] = cellColor
                     varImg[i, j] = 0
         cellColor += 1
-
-    # e = cv2.Canny( img, img.mean() - img.std( ), img.mean() + img.std() )
-    # ret, thresh = cv2.threshold(img, img.mean() , img.mean( ) + img.std() ,0)
-    # e, contours, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-    # cv2.drawContours( edges, contours, -1, 255, 1 )
-    save_image( cells, 'cells.png' )
-    print( '[INFO] Pixals belonging to same cell have same color values' )
+    return cells
 
 def process_input( imgfile, plot = False ):
     global g_
@@ -262,13 +259,56 @@ def process_input( imgfile, plot = False ):
     avg_ = np.mean( frames_, axis = 2 )
     variationAmongPixals = filter_pixals( frames_ )
     cellsImg = compute_cells( variationAmongPixals )
+    if plot:
+        plt.figure( figsize=( 14, 5 ) )
+        plt.subplot( 1, 2, 1 )
+        plt.imshow( avg_, interpolation = 'none', aspect = 'auto' )
+        plt.title( 'Average activity' )
+        plt.colorbar( )
+        plt.subplot( 1, 2, 2 )
+        print( '[INFO] Total cells %d' % cellsImg.max( ) )
+        cmap = plt.get_cmap('seismic', cellsImg.max( ) )   
+        plt.imshow( cellsImg, cmap = cmap, interpolation = 'none', aspect = 'auto' )
+        plt.title( 'Computed cells' )
+        plt.colorbar( )
+        plt.tight_layout( )
+        outfile = '%s.png' % imgfile
+        plt.savefig( outfile )
+        print( '[INFO] Wrote summary image to %s' % outfile )
+    return cellsImg
+
     
-def main( imgfile ):
+def main( args ):
     t1 = time.time()
-    process_input( imgfile  )
+    imgfile = args.input
+    cells = process_input( imgfile, True  )
     print( '[INFO] Total time taken %f seconds' % (time.time() - t1) )
+    outfile = 'cells.npy' or '%s.npy' % imgfile 
+    np.save( outfile, cells )
+    print( 'Wrote computed cells to %s' % outfile )
+
 
 if __name__ == '__main__':
-    imgfile = sys.argv[1]
-    main( imgfile )
+    import argparse
+    # Argument parser.
+    description = '''Compute cells in recording.'''
+    parser = argparse.ArgumentParser(description=description)
+    parser.add_argument('--input', '-i'
+        , required = True
+        , help = 'Input file'
+        )
+    parser.add_argument('--output', '-o'
+        , required = False
+        , help = 'Output file'
+        )
+    parser.add_argument( '--debug', '-d'
+        , required = False
+        , default = 0
+        , type = int
+        , help = 'Enable debug mode. Default 0, debug level'
+        )
+    class Args: pass 
+    args = Args()
+    parser.parse_args(namespace=args)
+    main( args )
 

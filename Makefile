@@ -3,6 +3,7 @@ DATADIR:=$(HOME)/Work/DATA/g5_136/test/
 DATAFILE:=$(HOME)/Work/DATA/ImagingData/2016-06-14/1/Trial10-ROI-1.tif
 CORRECTED_DATADILE:=_corrected.tif
 CORRECTED_NUMPY:=_corrected.tif.npy
+CELL_FILE:=cells.npy
 
 all : stabilize_recording  compute_cells
 
@@ -13,13 +14,12 @@ stabilize_recording : $(CORRECTED_DATADILE)
 $(CORRECTED_DATADILE) : $(DATAFILE) 
 	videostab -i $< -n 4 -o $(CORRECTED_DATADILE)
 
-compute_cells : $(CORRECTED_NUMPY)
+compute_cells : $(CORRECTED_NUMPY) ./compute_cells.py
 	@echo "Finding cells in corrected tiff file"
-	python ./compute_cells.py $(CORRECTED_NUMPY) 
+	python ./compute_cells.py -i $(CORRECTED_NUMPY) -o $(CELL_FILE)
 
-
-$(CORRECTED_NUMPY) : $(CORRECTED_DATADILE)
-	python ./tiffs2numpy.py -f $< -o $%
+$(CORRECTED_NUMPY) : $(CORRECTED_DATADILE) 
+	python ./tiffs2numpy.py -f $< -o $@
 
 ## #all : all_frames.npy  cells.png.npy result.png
 ## 	#@echo "All done"
