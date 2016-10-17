@@ -33,6 +33,8 @@ def filter_graph( g_, **kwargs ):
 
 def main( **kwargs ):
     graph = kwargs[ 'community' ]
+    frames = np.load( kwargs['frames'] )
+
     if isinstance( graph, str):
         g_ = nx.read_gpickle( graph )
     else:
@@ -44,25 +46,32 @@ def main( **kwargs ):
     print( '[INFO] Total edges in graph %d' % g_.number_of_edges( ) )
     g_ = filter_graph( g_, maximum_edges = 500 )
     print( '[INFO]  Total edges in graph (post filter) %d' % g_.number_of_edges())
+    timeseries = []
     for k in nx.k_clique_communities( g_, 2 ):
         print( 'Found a community : %s' % k )
         communityColor += 1
         for cell in k:
             indices = g_.node[cell]['indices']
+            tvec = g_.node[cell]['timeseries']
+            timeseries.append( tvec / tvec.max( ) )
             for i, j in indices:
                 img[j,i] = communityColor
 
     from networkx.drawing.nx_agraph import graphviz_layout
     pos = graphviz_layout( g_, 'neato' )
-    plt.figure( )
-    plt.subplot( 2, 1, 1 )
-    nx.draw( g_, pos = pos )
-    plt.savefig( 'clusters.png' )
-
-    plt.figure( )
+    plt.figure( figsize=(12,5) )
+    plt.subplot( 121 )
+    # nx.draw( g_, pos = pos )
+    # h, w, d = frames.shape
+    # allF = np.reshape( frames, (h*w, d) )
+    plt.imshow( timeseries, interpolation = 'none', aspect = 'auto' )
+    plt.colorbar( )
+    plt.subplot( 122 )
     plt.imshow( img, interpolation = 'none', aspect = 'auto' )
     plt.colorbar( )
-    plt.savefig( 'result.png' )
+    outfile = 'result.png'
+    plt.savefig( outfile )
+    print( '[INFO] Saved results to %s' % outfile )
 
 
 if __name__ == '__main__':
@@ -73,6 +82,10 @@ if __name__ == '__main__':
     parser.add_argument('--community', '-c'
         , required = True
         , help = 'Input community graph (pickle)'
+        )
+    parser.add_argument('--frames', '-f'
+        , required = True
+        , help = 'Numpy stack of all frames'
         )
     parser.add_argument('--output', '-o'
         , required = False

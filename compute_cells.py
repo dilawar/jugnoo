@@ -216,12 +216,12 @@ def filter_pixals( frames, plot = False ):
         save_image( cvs, 'variations.png', title ='Variation in pixal' )
     return cvs
 
-def compute_cells( img, **kwargs ):
+def compute_cells( variation_img, **kwargs ):
     """ Return dominant pixal representing a cell. 
     Start with the pixal with maximum variation.
     """
-    cells = np.zeros( img.shape )
-    varImg = img.copy( )
+    cells = np.zeros( variation_img.shape )
+    varImg = variation_img.copy( )
 
     # patch_rect_size is rectangle which represents the maximum dimension of
     # cell. We start a pixal with maximum variation and search in this patch for
@@ -231,7 +231,7 @@ def compute_cells( img, **kwargs ):
     while True:
         (minVal, maxVal, min, x) = cv2.minMaxLoc( varImg )
         assert maxVal == varImg.max( )
-        if maxVal <= img.mean():
+        if maxVal <= variation_img.mean():
             break
 
         # In the neighbourhood, find the pixals which are closer to this pixal
@@ -239,8 +239,9 @@ def compute_cells( img, **kwargs ):
         logging.info( 'Computing cell at (%3d,%3d) (%.3f)' % (x[1],x[0],maxVal))
         for i, j in itertools.product( range(d), range(d) ):
             i, j = x[1] + (i - d/2), x[0] + (j - d/2)
-            if i < img.shape[0] and j < img.shape[1]:
-                if is_connected( (x[1],x[0]), (i, j), img, max(maxVal - 1.0, img.mean()) ):
+            if i < variation_img.shape[0] and j < variation_img.shape[1]:
+                if is_connected( (x[1],x[0]), (i, j), variation_img, max(maxVal
+                    - 1.0, variation_img.mean()) ):
                     logging.debug( 'Point %d, %d is connected' % (i, j) )
                     # If only this pixal does not belong to other cell.
                     if cells[i,j] == 0:
