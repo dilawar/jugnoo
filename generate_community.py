@@ -18,44 +18,78 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np
 import networkx as nx
+import itertools
+import scipy.signal as sig
 
 def filter_graph( g_, **kwargs ):
     toKeep, listEdges = [], []
     for s, t in g_.edges():
         listEdges.append( (g_[s][t]['corr'], s, t ) )
+
     largeCorrEdges = sorted( listEdges
             , reverse = True)[0:kwargs.get('maximum_edges', 500 )]
+
     for (c,s,t) in largeCorrEdges:
         toKeep += [s,t]
     g_ = g_.subgraph( toKeep )
     return g_
 
+def smooth( a, window = 3 ):
+    window = np.ones( window ) / window 
+    return np.convolve( a, window , 'same' )
+
+def sync_index( x, y, method = 'pearson' ):
+    # Must smooth out the high frequency components.
+    assert min(len( x ), len( y )) > 30, "Singal too small"
+    a, b = [ smooth( x, 11 ) for x in [x, y ] ]
+    if method == 'dilawar':
+        signA = np.sign( np.diff( a ) )
+        signB = np.sign( np.diff( b ) )
+        s1 = np.sum( signA * signB ) / len( signA )
+        s2 = sig.fftconvolve(signA, signB).max() / len( signA )
+        return max(s1, s2) ** 0.5
+    elif method == 'pearson':
+        aa, bb = a / a.max(), b / b.max( )
+        c = scipy.stats.pearsonr( aa, bb )
+        return c[0]
+    raise UserWarning( 'Method %s is not implemented' % method )
+
+def build_correlation_graph( g_, img ):
+    nodes = g_.nodes( )
+    for m, n in itertools.combinations( nodes, 2 ):
+        vec1 = g_.node[ m ]['activity']
+        vec2 = g_.node[ n ]['activity']
+        corr = sync_index( vec1, vec2, 'dilawar' )
+        g_.add_edge( m, n, corr = corr )
+        img[m, n] = corr
+    return img
+
 
 def main( **kwargs ):
-    graph = kwargs[ 'community' ]
-    frames = np.load( kwargs['frames'] )
-
+    graph = kwargs[ 'cell_graph' ]
     if isinstance( graph, str):
         g_ = nx.read_gpickle( graph )
     else:
         g_ = graph
 
-    img = np.zeros( shape=g_.graph['shape'] )
-    print( '[INFO] Dims of community image %s' % str(img.shape))
-    communityColor = 0
+
+    print( '[INFO] Total nodes in graph %d' % g_.number_of_nodes( ) )
     print( '[INFO] Total edges in graph %d' % g_.number_of_edges( ) )
-    g_ = filter_graph( g_, maximum_edges = 500 )
-    print( '[INFO]  Total edges in graph (post filter) %d' % g_.number_of_edges())
+    n = g_.number_of_nodes( )
+    img = np.zeros( shape=(n,n) )
+    img = build_correlation_graph( g_, img )
+    communityColor = 0
+    # g_ = filter_graph( g_, maximum_edges = 10 )
+    # print( '[INFO]  Total edges in graph (post filter) %d' % g_.number_of_edges())
     timeseries = []
-    for k in nx.k_clique_communities( g_, 2 ):
+    for k in nx.k_clique_communities( g_, 10 ):
         print( 'Found a community : %s' % k )
         communityColor += 1
         for cell in k:
-            indices = g_.node[cell]['indices']
-            tvec = g_.node[cell]['timeseries']
-            timeseries.append( tvec / tvec.max( ) )
-            for i, j in indices:
-                img[j,i] = communityColor
+            indices = g_.node[cell]['pixals']
+            tvec = g_.node[cell]['activity']
+            timeseries.append( tvec / tvec.max( ))
+
 
     from networkx.drawing.nx_agraph import graphviz_layout
     pos = graphviz_layout( g_, 'neato' )
@@ -79,13 +113,9 @@ if __name__ == '__main__':
     # Argument parser.
     description = '''Generate cliques out of community graph'''
     parser = argparse.ArgumentParser(description=description)
-    parser.add_argument('--community', '-c'
+    parser.add_argument('--cell-graph', '-c'
         , required = True
         , help = 'Input community graph (pickle)'
-        )
-    parser.add_argument('--frames', '-f'
-        , required = True
-        , help = 'Numpy stack of all frames'
         )
     parser.add_argument('--output', '-o'
         , required = False

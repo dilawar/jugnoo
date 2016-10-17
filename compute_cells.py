@@ -1,5 +1,10 @@
 #!/usr/bin/env python
 
+"""
+
+
+"""
+
 __author__           = "Dilawar Singh"
 __copyright__        = "Copyright 2015, Dilawar Singh and NCBS Bangalore"
 __credits__          = ["NCBS Bangalore"]
@@ -29,7 +34,7 @@ import logging
 logger = logging.getLogger('')
 
 # g_ = ig.Graph( )
-g_ = nx.DiGraph( )
+g_ = nx.Graph( )
 cell_ = nx.DiGraph( ) 
 indir_ = None
 pixalcvs_ = []
@@ -87,47 +92,6 @@ def is_connected( m, n, img, thres = 10 ):
             return False
     return True
 
-def build_cell_graph( graph, frames, plot = False ):
-    """ Build a cell graph """
-    global pixalcvs_
-    global template_
-    global cells_
-    nodesToProcess = sorted( pixalcvs_ , reverse = True )
-    cells = []
-    img = np.int32( np.sum( frames, axis = 2 ))
-    for (c, n) in nodesToProcess:
-        if graph.node[n].get('cell', None) is not None:
-            continue
-        graph.node[n]['cell'] = len(cells)
-        logger.debug( 'Added timeseris value to cell graph' )
-        cells.append( n )
-        clusters = [ frames[n[0],n[1],:] ]
-        for m in graph.nodes( ):
-            # Definately not part of the cell.
-            if distance(m, n ) > 20.0:
-                continue 
-            # Accept all pixals in neighbourhood, for others check if they are
-            # connected at all.
-            if distance(m, n) < 10.0 or is_connected(m, n, template_):
-                graph.node[m]['cell'] = len( cells )
-                clusters.append( frames[m[0],m[1],:] )
-        logger.info( 'Total pixal in cell %d' % len( clusters ) )
-        clusters = np.mean( clusters, axis = 0 )
-        cell_.add_node( n , cv = c, timeseries = clusters )
-
-    print( '[INFO] Total cells %d' % len(cells) )
-    if not plot:
-        return  cell_
-
-    for p in cells:
-        cv2.circle( template_, (p[1], p[0]), 3, 20 );
-    plt.figure( )
-    plt.imshow( template_, interpolation = 'none', aspect = 'auto' )
-    plt.colorbar( )
-    plt.title( 'Total cells %d' % len(cells) )
-    plt.savefig( 'cells.png' )
-    return cell_
-
 def sync_index( x, y, method = 'pearson' ):
     # Must smooth out the high frequency components.
     assert min(len( x ), len( y )) > 30, "Singal too small"
@@ -166,7 +130,6 @@ def correlate_node_by_sync( cells ):
     cells.graph['shape'] = template_.shape
     cells.graph['timeseries'] = timeseries_
     nx.write_gpickle( cells, 'cells.gpickle' )
-    logger.info( 'Logging out after writing to graph.' )
     return 
 
 def fix_frames( frames ):
@@ -220,6 +183,7 @@ def compute_cells( variation_img, **kwargs ):
     """ Return dominant pixal representing a cell. 
     Start with the pixal with maximum variation.
     """
+
     cells = np.zeros( variation_img.shape )
     varImg = variation_img.copy( )
 
@@ -228,6 +192,7 @@ def compute_cells( variation_img, **kwargs ):
     # other pixals which might be on the same cell.
     d = kwargs.get( 'patch_rect_size', 40 )
     cellColor = 1
+
     while True:
         (minVal, maxVal, min, x) = cv2.minMaxLoc( varImg )
         assert maxVal == varImg.max( )
@@ -246,9 +211,39 @@ def compute_cells( variation_img, **kwargs ):
                     # If only this pixal does not belong to other cell.
                     if cells[i,j] == 0:
                         cells[i, j] = cellColor
+                    # Make this pixal to zero so it doesn't appear in search for
+                    # max again.
                     varImg[i, j] = 0
         cellColor += 1
     return cells
+
+def activity_in_cells( cells, frames ):
+    allActivity = []
+    #  This dictionary keeps the location of cells and average activity in each
+    #  cell.
+    global g_
+    g_.graph['shape'] = cells.shape
+    goodCells = {}
+    for cellColor in range( int( cells.max( ) ) ):
+        g_.add_node( cellColor )
+        xs, ys = np.where( cells == cellColor )
+        cellActivity = []
+        pixals = zip( xs, ys )
+        g_.node[cellColor]['pixals'] = pixals
+        for x, y  in pixals:
+            cellActivity.append( frames[y,x,:] )
+        cellVec = np.mean( cellActivity, axis = 0 ) 
+        g_.node[cellColor][ 'activity' ] = cellVec 
+        # Attach this activity to graph as well after normalization.
+        allActivity.append( cellVec / cellVec.max( ) )
+
+    cellGraph = 'cells_as_graph.gpickle'
+    nx.write_gpickle( g_, cellGraph )
+    print( '[INFO] Wrote cell graph to pickle file %s' % cellGraph )
+    print( '\t nodes %d' % g_.number_of_nodes( ) )
+    print( '\t edges %d' % g_.number_of_edges( ) )
+    activity = np.vstack( allActivity )
+    return activity 
 
 def process_input( imgfile, plot = False ):
     global g_
@@ -260,22 +255,30 @@ def process_input( imgfile, plot = False ):
     avg_ = np.mean( frames_, axis = 2 )
     variationAmongPixals = filter_pixals( frames_ )
     cellsImg = compute_cells( variationAmongPixals )
+    activity = activity_in_cells( cellsImg, data )
+
+    plt.figure( figsize=(14, 8) )
+    ax1 = plt.subplot2grid( (2,2), (0, 0) )
+    ax2 = plt.subplot2grid( (2,2), (0, 1) )
+    ax3 = plt.subplot2grid( (2,2), (1, 0), colspan=2)
+
     if plot:
-        plt.figure( figsize=( 14, 5 ) )
-        plt.subplot( 1, 2, 1 )
-        plt.imshow( avg_, interpolation = 'none', aspect = 'auto' )
-        plt.title( 'Average activity' )
-        plt.colorbar( )
-        plt.subplot( 1, 2, 2 )
+        img = ax1.imshow( avg_, interpolation = 'none', aspect = 'auto' )
+        ax1.set_title( 'Average activity' )
+        plt.colorbar( img, ax = ax1 )
         print( '[INFO] Total cells %d' % cellsImg.max( ) )
         cmap = plt.get_cmap('seismic', cellsImg.max( ) )   
-        plt.imshow( cellsImg, cmap = cmap, interpolation = 'none', aspect = 'auto' )
-        plt.title( 'Computed cells' )
-        plt.colorbar( )
-        plt.tight_layout( )
+        img = ax2.imshow( cellsImg, cmap = cmap, interpolation = 'none', aspect = 'auto' )
+        ax2.set_title( 'Computed cells' )
+        plt.colorbar( img, ax = ax2 )
+
+        # img = ax3.imshow( activity, interpolation = 'none', aspect = 'auto' )
+        img = ax3.imshow( activity,  aspect = 'auto' )
+        ax3.set_title( 'Acitivity in computed cells' )
+        plt.colorbar( img, ax = ax3 )
         outfile = '%s.png' % imgfile
         plt.savefig( outfile )
-        print( '[INFO] Wrote summary image to %s' % outfile )
+        print( '[INFO] Wrote computed cells to  %s' % outfile )
     return cellsImg
 
     
