@@ -99,20 +99,10 @@ def read_frames( videofile, **kwargs ):
         quit()
 
 def main( args ):
-    files = []
-    for d, sd, fs in os.walk( args.dir ):
-        for f in fs:
-            files.append( os.path.join( d, f ) )
-    frames = []
-    for f in files:
-        ext = f.split( '.' )[-1]
-        if 'tif' in ext.lower():
-            print( ' | Processing file %s' % f )
-            frames += read_frames( f )
-
+    frames = read_frames( args.file )
     frames = np.dstack( frames )
     print( '[INFO] Matrix shape: %s' % str(frames.shape) )
-    outfile = args.outfile or os.path.join( args.dir, 'all_frames.npy' )
+    outfile = args.outfile or '%s.npy' % args.file
     np.save( outfile, frames )
     plt.imshow( np.mean(frames, axis=2), interpolation = 'none', aspect = 'auto' )
     plt.colorbar( )
@@ -127,9 +117,9 @@ if __name__ == '__main__':
     # Argument parser.
     description = '''Convert tiff files into a big numpy matrix'''
     parser = argparse.ArgumentParser(description=description)
-    parser.add_argument('--dir', '-d'
+    parser.add_argument('--file', '-f'
         , required = True
-        , help = 'Directory to search for tiff files'
+        , help = 'Tiff file'
         )
     parser.add_argument('--outfile', '-o'
         , required = False
