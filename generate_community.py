@@ -100,10 +100,17 @@ def main( **kwargs ):
     # nx.draw( g_, pos = pos )
     # h, w, d = frames.shape
     # allF = np.reshape( frames, (h*w, d) )
-    plt.imshow( timeseries, interpolation = 'none', aspect = 'auto' )
+    newTimeSeries = []
+    for t in timeseries:
+        t[ t < t.mean() + t.std() ] = 0
+        t[ t >= t.mean() + t.std() ] = 1.0
+        newTimeSeries.append(  t )
+    plt.imshow( newTimeSeries, interpolation = 'none', aspect = 'auto' )
+    plt.title( 'Firing in cells (thresholded)' )
     plt.colorbar( )
     plt.subplot( 122 )
-    plt.imshow( img, interpolation = 'none', aspect = 'auto' )
+    plt.imshow( img, cmap='gray', interpolation = 'none', aspect = 'auto' )
+    plt.title( 'Correlation among cells' )
     plt.colorbar( )
     outfile = 'result.png'
     plt.savefig( outfile )

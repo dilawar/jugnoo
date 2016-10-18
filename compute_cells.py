@@ -96,41 +96,22 @@ def sync_index( x, y, method = 'pearson' ):
     # Must smooth out the high frequency components.
     assert min(len( x ), len( y )) > 30, "Singal too small"
     a, b = [ smooth( x, 31 ) for x in [x, y ] ]
+    coef = 0.0
     if method == 'dilawar':
         signA = np.sign( np.diff( a ) )
         signB = np.sign( np.diff( b ) )
         s1 = np.sum( signA * signB ) / len( signA )
         s2 = sig.fftconvolve(signA, signB).max() / len( signA )
-        return max(s1, s2) ** 0.5
+        coef = max(s1, s2) ** 0.5
     elif method == 'pearson':
         aa, bb = a / a.max(), b / b.max( )
         c = scipy.stats.pearsonr( aa, bb )
-        return c[0]
-    raise UserWarning( 'Method %s is not implemented' % method )
+        coef = c[0]
+    else:
+        raise UserWarning( 'Method %s is not implemented' % method )
+    print( '\t Corr coef is %f' % coef )
+    return coef
 
-def correlate_node_by_sync( cells ):
-    global template_ , avg_
-    for m, n in itertools.combinations( cells.nodes( ), 2 ):
-        vec1, vec2 = cells.node[m]['timeseries'], cells.node[n]['timeseries']
-        corr = sync_index( vec1, vec2 )
-        rcorr = sync_index( vec2, vec1 )
-        if corr > 0.6:
-            cells.add_edge( m, n, weight = corr )
-            cells.add_edge( n, m, weight = rcorr )
-
-    outfile = 'final.png' 
-    plt.figure( figsize = (12,8) )
-    plt.subplot( 2, 2, 1 )
-    plt.imshow( avg_, interpolation = 'none', aspect = 'auto' )
-    plt.title( 'All frames averaged' )
-    plt.colorbar( ) # orientation = 'horizontal' )
-
-    syncImg = np.zeros( shape=template_.shape )
-    syncDict = defaultdict( list )
-    cells.graph['shape'] = template_.shape
-    cells.graph['timeseries'] = timeseries_
-    nx.write_gpickle( cells, 'cells.gpickle' )
-    return 
 
 def fix_frames( frames ):
     result = [ ]
@@ -236,6 +217,11 @@ def activity_in_cells( cells, frames ):
         g_.node[cellColor][ 'activity' ] = cellVec 
         # Attach this activity to graph as well after normalization.
         allActivity.append( cellVec / cellVec.max( ) )
+
+    # Now compute correlation between nodes and add edges
+    for n1, n2 in itertools.combinations( g_.nodes( ), 2):
+        v1, v2 = g_.node[n1]['activity'], g_.node[n2]['activity']
+        g_.add_edge( n1, n2, weight = sync_index( v1, v2, 'dilawar' ) )
 
     cellGraph = 'cells_as_graph.gpickle'
     nx.write_gpickle( g_, cellGraph )
