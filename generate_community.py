@@ -24,40 +24,16 @@ import scipy.signal as sig
 def filter_graph( g_, **kwargs ):
     toKeep, listEdges = [], []
     for s, t in g_.edges():
-        if g_[s][t]['corr'] >= kwargs.get( 'minimum_correlation', 0.5 ):
+        if g_[s][t]['weight'] >= kwargs.get( 'minimum_correlation', 0.5 ):
             toKeep += [s,t]
 
     g_ = g_.subgraph( toKeep )
     return g_
 
-def smooth( a, window = 3 ):
-    window = np.ones( window ) / window 
-    return np.convolve( a, window , 'same' )
-
-def sync_index( x, y, method = 'pearson' ):
-    # Must smooth out the high frequency components.
-    assert min(len( x ), len( y )) > 30, "Singal too small"
-    a, b = [ smooth( x, 11 ) for x in [x, y ] ]
-    if method == 'dilawar':
-        signA = np.sign( np.diff( a ) )
-        signB = np.sign( np.diff( b ) )
-        s1 = np.sum( signA * signB ) / len( signA )
-        s2 = sig.fftconvolve(signA, signB).max() / len( signA )
-        return max(s1, s2) ** 0.5
-    elif method == 'pearson':
-        aa, bb = a / a.max(), b / b.max( )
-        c = scipy.stats.pearsonr( aa, bb )
-        return c[0]
-    raise UserWarning( 'Method %s is not implemented' % method )
-
 def build_correlation_graph( g_, img ):
     nodes = g_.nodes( )
-    for m, n in itertools.combinations( nodes, 2 ):
-        vec1 = g_.node[ m ]['activity']
-        vec2 = g_.node[ n ]['activity']
-        corr = sync_index( vec1, vec2, 'dilawar' )
-        g_.add_edge( m, n, corr = corr )
-        img[m, n] = corr
+    for s, t in g_.edges( ):
+        img[s,t] = g_[s][t]['weight']
     return img
 
 
