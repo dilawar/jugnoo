@@ -1,6 +1,7 @@
 PYTHON=`which python`
 #DATAFILE:=$(HOME)/Work/DATA/ImagingData/2016-06-14/combined.tiff
-DATAFILE:=~/Work/DATA/ImagingData/2016-06-14/1/Trial12-ROI-1.tif
+#DATAFILE:=~/Work/DATA/ImagingData/2016-06-14/1/Trial12-ROI-1.tif
+DATAFILE := ~/Work/DATA/ImagingData/test_video_stabilizer/Trial1and2.tif
 CORRECTED_DATADILE:=_corrected.tif
 ALL_FRAMES:=_corrected.tif.npy
 CELL_FILE:=cells.npy
@@ -15,7 +16,7 @@ stabilize_recording : $(CORRECTED_DATADILE)
 	@echo "Done stabilizing image"
 
 $(CORRECTED_DATADILE) : $(DATAFILE) 
-	videostab -i $< -n 1 -o $(CORRECTED_DATADILE)
+	videostab -i $< -n 2 -o $(CORRECTED_DATADILE) -v
 
 compute_cells : $(CELL_FILE) ./compute_cells.py
 	@echo "Finding cells in corrected tiff file"

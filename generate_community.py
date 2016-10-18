@@ -24,13 +24,9 @@ import scipy.signal as sig
 def filter_graph( g_, **kwargs ):
     toKeep, listEdges = [], []
     for s, t in g_.edges():
-        listEdges.append( (g_[s][t]['corr'], s, t ) )
+        if g_[s][t]['corr'] >= kwargs.get( 'minimum_correlation', 0.5 ):
+            toKeep += [s,t]
 
-    largeCorrEdges = sorted( listEdges
-            , reverse = True)[0:kwargs.get('maximum_edges', 500 )]
-
-    for (c,s,t) in largeCorrEdges:
-        toKeep += [s,t]
     g_ = g_.subgraph( toKeep )
     return g_
 
@@ -79,10 +75,16 @@ def main( **kwargs ):
     img = np.zeros( shape=(n,n) )
     img = build_correlation_graph( g_, img )
     communityColor = 0
-    # g_ = filter_graph( g_, maximum_edges = 10 )
-    # print( '[INFO]  Total edges in graph (post filter) %d' % g_.number_of_edges())
+    g_ = filter_graph( g_, minimum_correlation = 0.5 )
+    print( '[INFO]  Total edges in graph (post filter) %d' % g_.number_of_edges())
+
+    # Compute minimum cut.
+    # res = nx.minimum_cut( g_, 0,  100, capacity = 'corr' )
+    # res = nx.current_flow_closeness_centrality( g_, weight='corr' )
+    # print( res )
+
     timeseries = []
-    for k in nx.k_clique_communities( g_, 10 ):
+    for k in nx.find_cliques( g_ ):
         print( 'Found a community : %s' % k )
         communityColor += 1
         for cell in k:
