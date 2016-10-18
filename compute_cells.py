@@ -172,17 +172,19 @@ def compute_cells( variation_img, **kwargs ):
     # cell. We start a pixal with maximum variation and search in this patch for
     # other pixals which might be on the same cell.
     d = kwargs.get( 'patch_rect_size', 40 )
-    cellColor = 1
 
+    breakAt = varImg.mean()
+    cellColor = 0
     while True:
         (minVal, maxVal, min, x) = cv2.minMaxLoc( varImg )
+        cellColor += 1
         assert maxVal == varImg.max( )
-        if maxVal <= variation_img.mean():
+        if maxVal <= breakAt:
             break
 
         # In the neighbourhood, find the pixals which are closer to this pixal
         # and have good variation.
-        logging.info( 'Computing cell at (%3d,%3d) (%.3f)' % (x[1],x[0],maxVal))
+        print( '+  Cell at (%3d,%3d) (var: %.3f)' % (x[1],x[0],maxVal))
         for i, j in itertools.product( range(d), range(d) ):
             i, j = x[1] + (i - d/2), x[0] + (j - d/2)
             if i < variation_img.shape[0] and j < variation_img.shape[1]:
@@ -190,12 +192,14 @@ def compute_cells( variation_img, **kwargs ):
                     - 1.0, variation_img.mean()) ):
                     logging.debug( 'Point %d, %d is connected' % (i, j) )
                     # If only this pixal does not belong to other cell.
-                    if cells[i,j] == 0:
+                    if cells[i,j] == 0.0:
                         cells[i, j] = cellColor
                     # Make this pixal to zero so it doesn't appear in search for
                     # max again.
                     varImg[i, j] = 0
-        cellColor += 1
+    # Reverse the cells colors, it helps when plotting. 
+    cells =  np.uint32( 1 + cells.max() - cells )
+    print( 'Done locating all cells' )
     return cells
 
 def activity_in_cells( cells, frames ):
@@ -205,11 +209,15 @@ def activity_in_cells( cells, frames ):
     global g_
     g_.graph['shape'] = cells.shape
     goodCells = {}
-    for cellColor in range( int( cells.max( ) ) ):
-        g_.add_node( cellColor )
+    for cellColor in range(1, int( cells.max( ) ) ):
+        print( '+ Computing for cell color %d' % cellColor )
         xs, ys = np.where( cells == cellColor )
+        pixals = zip( xs, ys ) # These pixals belong to this cell.
+        if len( pixals ) < 1:
+            continue
+
         cellActivity = []
-        pixals = zip( xs, ys )
+        g_.add_node( cellColor )
         g_.node[cellColor]['pixals'] = pixals
         for x, y  in pixals:
             cellActivity.append( frames[y,x,:] )
@@ -249,20 +257,20 @@ def process_input( imgfile, plot = False ):
     ax3 = plt.subplot2grid( (2,2), (1, 0), colspan=2)
 
     if plot:
-        img = ax1.imshow( avg_, interpolation = 'none', aspect = 'auto' )
+        img = ax1.imshow( avg_, cmap = 'gray', interpolation = 'none', aspect = 'auto' )
         ax1.set_title( 'Average activity' )
         plt.colorbar( img, ax = ax1 )
         print( '[INFO] Total cells %d' % cellsImg.max( ) )
-        cmap = plt.get_cmap('seismic', cellsImg.max( ) )   
-        img = ax2.imshow( cellsImg, cmap = cmap, interpolation = 'none', aspect = 'auto' )
-        ax2.set_title( 'Computed cells' )
+        img = ax2.imshow( cellsImg, cmap = 'gray_r', interpolation = 'none', aspect = 'auto' )
+        ax2.set_title( 'Computed ROIs (cells)' )
         plt.colorbar( img, ax = ax2 )
 
         # img = ax3.imshow( activity, interpolation = 'none', aspect = 'auto' )
-        img = ax3.imshow( activity,  aspect = 'auto' )
-        ax3.set_title( 'Acitivity in computed cells' )
+        img = ax3.imshow( activity, cmap='gray', aspect = 'auto' )
+        ax3.set_title( 'Acitivity in ROIs (cells)' )
         plt.colorbar( img, ax = ax3 )
         outfile = '%s.png' % imgfile
+        plt.tight_layout( )
         plt.savefig( outfile )
         print( '[INFO] Wrote computed cells to  %s' % outfile )
     return cellsImg

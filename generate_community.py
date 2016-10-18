@@ -2,6 +2,9 @@
 
 """generate_community.py: 
 
+TODO: 
+Ideally should generate clusters but currently only generates correlation graph.
+
 """
     
 __author__           = "Dilawar Singh"
@@ -32,8 +35,10 @@ def filter_graph( g_, **kwargs ):
 
 def build_correlation_graph( g_, img ):
     nodes = g_.nodes( )
+    # Since color starts with 1, we need to substract that from the index. Node
+    # ids are color ids.
     for s, t in g_.edges( ):
-        img[s,t] = g_[s][t]['weight']
+        img[s-1,t-1] = g_[s][t]['weight']
     return img
 
 
