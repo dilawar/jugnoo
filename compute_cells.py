@@ -109,7 +109,7 @@ def sync_index( x, y, method = 'pearson' ):
         coef = c[0]
     else:
         raise UserWarning( 'Method %s is not implemented' % method )
-    print( '\t Corr coef is %f' % coef )
+    # print( '\tCorr coef is %f' % coef )
     return coef
 
 
@@ -202,6 +202,20 @@ def compute_cells( variation_img, **kwargs ):
     print( 'Done locating all cells' )
     return cells
 
+def threshold_signal( v ):
+    v[ v < v.mean() + v.std() ] = 0
+    v[ v >= v.mean() + v.std() ] = 1.0
+    return v
+
+def sync_index_clip( v1, v2 ):
+    a = threshold_signal( v1 )
+    b = threshold_signal( v2 )
+    coef = 0.0
+    c = scipy.stats.pearsonr( a, b )
+    coef = c[0]
+    return coef
+
+
 def activity_in_cells( cells, frames ):
     allActivity = []
     #  This dictionary keeps the location of cells and average activity in each
@@ -229,8 +243,10 @@ def activity_in_cells( cells, frames ):
     # Now compute correlation between nodes and add edges
     for n1, n2 in itertools.combinations( g_.nodes( ), 2):
         v1, v2 = g_.node[n1]['activity'], g_.node[n2]['activity']
-        g_.add_edge( n1, n2, weight = sync_index( v1, v2, 'dilawar' ) )
-
+        g_.add_edge( n1, n2
+                , weight = sync_index( v1, v2, 'dilawar' ) 
+                , weight_sigma = sync_index_clip( v1, v2 )
+                )
     cellGraph = 'cells_as_graph.gpickle'
     nx.write_gpickle( g_, cellGraph )
     print( '[INFO] Wrote cell graph to pickle file %s' % cellGraph )
