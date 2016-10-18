@@ -202,7 +202,8 @@ def compute_cells( variation_img, **kwargs ):
     print( 'Done locating all cells' )
     return cells
 
-def threshold_signal( v ):
+def threshold_signal( x ):
+    v = x.copy( )
     v[ v < v.mean() + v.std() ] = 0
     v[ v >= v.mean() + v.std() ] = 1.0
     return v
