@@ -88,7 +88,8 @@ def is_connected( m, n, img, thres = 10 ):
         points = [ (m[0], y) for y in ys ]
 
     for p in points:
-        if img[p] < thres:
+        x, y = int(p[0]), int(p[1])
+        if img[x,y] < thres:
             return False
     return True
 
@@ -135,11 +136,14 @@ def save_image( img, filename, **kwargs ):
     plt.figure( )
     plt.imshow( img, interpolation = 'none', aspect = 'auto' )
     plt.colorbar( )
+
     if kwargs.get( 'title', False):
         plt.title( kwargs.get( 'title' ) )
+
+    # Saving to numpy format.
     np.save( '%s.npy' % filename, img )
     plt.savefig( filename )
-    print( 'Saved figure to {0} and to {0}.npy'.format(filename ) )
+    print( '[INFPO] Saved figure {0}.png and data to {0}'.format(filename ) )
     plt.close( )
 
 def play( img ):
@@ -183,15 +187,15 @@ def compute_cells( variation_img, **kwargs ):
             break
 
         # In the neighbourhood, find the pixals which are closer to this pixal
-        # and have good variation.
+        # and have good variation. It might belog to same cell.
         print( '+  Cell at (%3d,%3d) (var: %.3f)' % (x[1],x[0],maxVal))
         for i, j in itertools.product( range(d), range(d) ):
             i, j = x[1] + (i - d/2), x[0] + (j - d/2)
             if i < variation_img.shape[0] and j < variation_img.shape[1]:
-                if is_connected( (x[1],x[0]), (i, j), variation_img, max(maxVal
-                    - 1.0, variation_img.mean()) ):
+                if is_connected( (x[1],x[0]), (i, j), variation_img, max(maxVal - 1.0, variation_img.mean()) ):
                     logging.debug( 'Point %d, %d is connected' % (i, j) )
                     # If only this pixal does not belong to other cell.
+                    i, j = int(i), int(j)
                     if cells[i,j] == 0.0:
                         cells[i, j] = cellColor
                     # Make this pixal to zero so it doesn't appear in search for
@@ -199,7 +203,7 @@ def compute_cells( variation_img, **kwargs ):
                     varImg[i, j] = 0
     # Reverse the cells colors, it helps when plotting. 
     cells =  np.uint32( 1 + cells.max() - cells )
-    print( 'Done locating all cells' )
+    print( '[INFO] Done locating all cells' )
     return cells
 
 def threshold_signal( x ):
@@ -227,7 +231,9 @@ def activity_in_cells( cells, frames ):
     for cellColor in range(1, int( cells.max( ) ) ):
         print( '+ Computing for cell color %d' % cellColor )
         xs, ys = np.where( cells == cellColor )
-        pixals = zip( xs, ys ) # These pixals belong to this cell.
+        if len(xs) < 1 or len(ys) < 1:
+            continue
+        pixals = list( zip( xs, ys )) # These pixals belong to this cell.
         if len( pixals ) < 1:
             continue
 
@@ -261,10 +267,16 @@ def process_input( imgfile, plot = False ):
     global template_, avg_
     global frames_, timeseries_
     data = np.load( imgfile )
-    # play( data )
+
+    ## Play the read file here.
+    #play( data )
+
     frames_ = np.dstack( [ garnish_frame( f ) for f in data.T ] )
+    print( '[INFO] Total frames read %d' % len( frames_ ))
+
     avg_ = np.mean( frames_, axis = 2 )
     variationAmongPixals = filter_pixals( frames_ )
+
     cellsImg = compute_cells( variationAmongPixals )
     activity = activity_in_cells( cellsImg, data )
 
