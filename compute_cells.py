@@ -27,6 +27,7 @@ import image_reader as imgr
 import environment as e
 import networkx as nx
 import itertools
+import random
 from collections import defaultdict
 import gc
 
@@ -181,7 +182,9 @@ def compute_cells( variation_img, **kwargs ):
     cellColor = 0
     while True:
         (minVal, maxVal, min, x) = cv2.minMaxLoc( varImg )
-        cellColor += 1
+        # Assign random color value.
+        #cellColor += 1
+        cellColor = random.randint(0, 32)
         assert maxVal == varImg.max( )
         if maxVal <= breakAt:
             break
@@ -290,7 +293,7 @@ def process_input( imgfile, plot = False ):
         ax1.set_title( 'Average activity' )
         plt.colorbar( img, ax = ax1 )
         print( '[INFO] Total cells %d' % cellsImg.max( ) )
-        img = ax2.imshow( cellsImg, cmap = 'gray_r', interpolation = 'none', aspect = 'auto' )
+        img = ax2.imshow( cellsImg, interpolation = 'none', aspect = 'auto' )
         ax2.set_title( 'Computed ROIs (cells)' )
         plt.colorbar( img, ax = ax2 )
 
